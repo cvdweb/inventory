@@ -1,0 +1,9 @@
+# Bỏ qua toàn bộ file JSON trong thư mục data
+/data/**/*.json
+
+# Giữ lại file .htaccess trong data
+!/data/.htaccess
+
+# Nếu muốn giữ cấu trúc thư mục (không bị git bỏ trống)
+!/data/**/
+!.gitkeep

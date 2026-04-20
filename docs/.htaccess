@@ -1,0 +1,13 @@
+Options -Indexes
+
+# Cho phép tải file .docx
+<FilesMatch "\.docx$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
+
+# Chặn tất cả file khác
+<FilesMatch "^(?!.*\.docx$).*$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>

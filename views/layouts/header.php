@@ -69,6 +69,9 @@
     <a href="index.php?page=users" class="nav-item <?= ($page === 'users') ? 'active' : '' ?>">
       <i class="bi bi-people-fill"></i><span>Tài Khoản NV</span>
     </a>
+    <a href="index.php?page=backup" class="nav-item <?= ($page === 'backup') ? 'active' : '' ?>">
+      <i class="bi bi-cloud-arrow-up-fill"></i><span>Sao Lưu</span>
+    </a>
     <?php endif; ?>
     <a href="index.php?page=help" class="nav-item <?= ($page === 'help') ? 'active' : '' ?>">
       <i class="bi bi-book-fill"></i><span>Hướng Dẫn SD</span>

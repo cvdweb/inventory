@@ -175,3 +175,143 @@ function updateDeliveryStatus(string $branch, string $invoiceId, string $status)
         ? ['success' => true,  'message' => 'Đã cập nhật trạng thái giao hàng']
         : ['success' => false, 'message' => 'Không tìm thấy hóa đơn'];
 }
+
+// ============================================================
+// LẤY HÓA ĐƠN THEO ID (dò tìm qua các tháng)
+// ============================================================
+
+function getInvoiceById(string $branch, string $invoiceId): ?array
+{
+    for ($i = 0; $i < 12; $i++) {
+        $ym   = date('Y_m', strtotime("-{$i} months"));
+        $file = DATA_PATH . "/{$branch}/invoices_{$ym}.json";
+        if (!file_exists($file)) continue;
+        foreach (readJson($file) as $inv) {
+            if ($inv['id'] === $invoiceId) return $inv;
+        }
+    }
+    return null;
+}
+
+// ============================================================
+// SỬA HÓA ĐƠN (chỉ cho hóa đơn chưa giao)
+// ============================================================
+
+function updateInvoice(string $branch, string $invoiceId, array $post): array
+{
+    // 1. Tìm hóa đơn gốc
+    $original = null;
+    $targetFile = null;
+    for ($i = 0; $i < 12; $i++) {
+        $ym   = date('Y_m', strtotime("-{$i} months"));
+        $file = DATA_PATH . "/{$branch}/invoices_{$ym}.json";
+        if (!file_exists($file)) continue;
+        foreach (readJson($file) as $inv) {
+            if ($inv['id'] === $invoiceId) {
+                $original   = $inv;
+                $targetFile = $file;
+                break 2;
+            }
+        }
+    }
+
+    if (!$original)     return ['success' => false, 'message' => 'Không tìm thấy hóa đơn'];
+    if (($original['delivery_status'] ?? '') === 'delivered')
+        return ['success' => false, 'message' => 'Không thể sửa hóa đơn đã giao'];
+
+    // 2. Parse items mới
+    $newItems = json_decode($post['items'] ?? '[]', true) ?: [];
+    if (empty($newItems)) return ['success' => false, 'message' => 'Hóa đơn phải có ít nhất 1 sản phẩm'];
+
+    // 3. Hoàn tồn kho theo items CŨ
+    foreach ($original['items'] as $oldItem) {
+        updateStock($branch, $oldItem['product_code'], $oldItem['qty'], 'in');
+    }
+
+    // 4. Kiểm tra tồn kho và trừ theo items MỚI
+    $processedItems = [];
+    foreach ($newItems as $item) {
+        $code = $item['code'] ?? '';
+        $qty  = floatval($item['qty'] ?? 0);
+        if (!$code || $qty <= 0) continue;
+
+        $product = productGetByCode($branch, $code);
+        if (!$product) {
+            // Hoàn lại tồn kho cũ nếu gặp lỗi
+            foreach ($original['items'] as $oldItem) {
+                updateStock($branch, $oldItem['product_code'], $oldItem['qty'], 'out');
+            }
+            return ['success' => false, 'message' => "Không tìm thấy sản phẩm: {$code}"];
+        }
+        if (($product['stock'] ?? 0) < $qty) {
+            // Hoàn lại tồn kho cũ nếu gặp lỗi
+            foreach ($original['items'] as $oldItem) {
+                updateStock($branch, $oldItem['product_code'], $oldItem['qty'], 'out');
+            }
+            return ['success' => false, 'message' => "'{$product['name']}' không đủ tồn kho (còn " . ($product['stock'] ?? 0) . " {$product['unit']})"];
+        }
+
+        $processedItems[] = [
+            'product_code' => $code,
+            'product_name' => $product['name'],
+            'unit'         => $product['unit'],
+            'qty'          => $qty,
+            'price_out'    => floatval($item['price_out'] ?? $product['price_out']),
+            'line_total'   => $qty * floatval($item['price_out'] ?? $product['price_out']),
+        ];
+    }
+
+    // 5. Trừ tồn kho mới
+    foreach ($processedItems as $item) {
+        updateStock($branch, $item['product_code'], $item['qty'], 'out');
+    }
+
+    // 6. Ghi log thay đổi
+    $user    = currentUser();
+    $total   = array_sum(array_column($processedItems, 'line_total'));
+    $editLog = $original['edit_log'] ?? [];
+    $editLog[] = [
+        'edited_by'    => $user['name'] ?? 'System',
+        'edited_at'    => date('Y-m-d H:i:s'),
+        'old_total'    => $original['total'],
+        'new_total'    => $total,
+        'old_item_cnt' => count($original['items']),
+        'new_item_cnt' => count($processedItems),
+    ];
+
+    // 7. Cập nhật hóa đơn trong file
+    $fp = fopen($targetFile, 'c+');
+    if (!$fp) return ['success' => false, 'message' => 'Lỗi mở file'];
+    flock($fp, LOCK_EX);
+    $invoices = json_decode(stream_get_contents($fp) ?: '[]', true) ?: [];
+
+    $delivery_date   = $post['delivery_date']   ?? $original['delivery_date']   ?? '';
+    $delivery_status = $original['delivery_status'] ?? 'self_pickup';
+    if ($delivery_date && $delivery_status === 'self_pickup') $delivery_status = 'pending';
+    if (!$delivery_date) $delivery_status = 'self_pickup';
+
+    foreach ($invoices as &$inv) {
+        if ($inv['id'] === $invoiceId) {
+            $inv['customer']        = $post['customer']      ?? $original['customer'];
+            $inv['phone']           = $post['phone']         ?? $original['phone'];
+            $inv['address']         = $post['address']       ?? $original['address']       ?? '';
+            $inv['note']            = $post['note']          ?? $original['note']          ?? '';
+            $inv['delivery_note']   = $post['delivery_note'] ?? $original['delivery_note'] ?? '';
+            $inv['payment']         = $post['payment']       ?? $original['payment'];
+            $inv['delivery_date']   = $delivery_date;
+            $inv['delivery_status'] = $delivery_status;
+            $inv['items']           = $processedItems;
+            $inv['total']           = $total;
+            $inv['updated_at']      = date('Y-m-d H:i:s');
+            $inv['edit_log']        = $editLog;
+            break;
+        }
+    }
+
+    ftruncate($fp, 0); rewind($fp);
+    fwrite($fp, json_encode($invoices, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+    fflush($fp); flock($fp, LOCK_UN); fclose($fp);
+
+    return ['success' => true, 'id' => $invoiceId, 'total' => $total,
+            'message' => 'Đã cập nhật hóa đơn thành công'];
+}

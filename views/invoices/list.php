@@ -172,6 +172,14 @@ function deliveryBadge(array $inv): string {
                 <i class="bi bi-eye"></i>
               </button>
 
+              <!-- Sửa hóa đơn (chỉ admin/superadmin + chưa giao) -->
+              <?php if (in_array(currentUser()['role'],['superadmin','admin']) && $st !== 'delivered'): ?>
+              <a href="index.php?page=edit_invoice&branch=<?= $reqBranch ?>&id=<?= urlencode($inv['id']??'') ?>&ym=<?= $yearMonth ?>"
+                 class="btn btn-sm btn-outline-warning" title="Sửa hóa đơn">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <?php endif; ?>
+
               <!-- In phiếu giao hàng (chỉ khi có giao hàng) -->
               <?php if (in_array($st, ['pending','delivered'])): ?>
               <button class="btn btn-sm btn-outline-warning" title="In phiếu giao hàng"

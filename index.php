@@ -224,6 +224,80 @@ if ($page === 'users') {
 }
 
 // ============================================================
+// BACKUP ACTIONS
+// ============================================================
+if ($page === 'backup') {
+    requireRole(['superadmin', 'admin']);
+    $action     = $_GET['action'] ?? '';
+    $backupPath = BASE_PATH . '/backups';
+    if (!is_dir($backupPath)) mkdir($backupPath, 0755, true);
+
+    if ($action === 'create' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $timestamp  = date('Y-m-d_H-i-s');
+        $filename   = "backup_manual_{$timestamp}.zip";
+        $targetFile = $backupPath . '/' . $filename;
+        $zip = new ZipArchive();
+        if ($zip->open($targetFile, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
+            $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(DATA_PATH, FilesystemIterator::SKIP_DOTS));
+            foreach ($it as $file) {
+                if (!$file->isFile()) continue;
+                $zip->addFile($file->getRealPath(), substr($file->getRealPath(), strlen(BASE_PATH)+1));
+            }
+            $zip->close();
+            $_SESSION['flash'] = ['type'=>'success','message'=>"Sao lưu thành công: {$filename} (" . round(filesize($targetFile)/1024,1) . " KB)"];
+        } else {
+            $_SESSION['flash'] = ['type'=>'danger','message'=>'Lỗi tạo file backup. Kiểm tra quyền thư mục /backups/'];
+        }
+        header('Location: index.php?page=backup'); exit;
+    }
+
+    if ($action === 'download') {
+        $file = basename($_GET['file'] ?? '');
+        $path = $backupPath . '/' . $file;
+        if ($file && file_exists($path) && str_starts_with($file, 'backup_')) {
+            header('Content-Type: application/zip');
+            header('Content-Disposition: attachment; filename="' . $file . '"');
+            header('Content-Length: ' . filesize($path));
+            readfile($path); exit;
+        }
+        $_SESSION['flash'] = ['type'=>'danger','message'=>'File không tồn tại'];
+        header('Location: index.php?page=backup'); exit;
+    }
+
+    if ($action === 'delete') {
+        $file = basename($_GET['file'] ?? '');
+        $path = $backupPath . '/' . $file;
+        if ($file && file_exists($path) && str_starts_with($file, 'backup_')) {
+            unlink($path);
+            $_SESSION['flash'] = ['type'=>'success','message'=>"Đã xóa: {$file}"];
+        }
+        header('Location: index.php?page=backup'); exit;
+    }
+
+    if ($action === 'cleanup') {
+        $files = glob($backupPath . '/backup_*.zip') ?: [];
+        usort($files, fn($a,$b) => filemtime($b) <=> filemtime($a));
+        $deleted = 0;
+        foreach (array_slice($files, 10) as $f) { unlink($f); $deleted++; }
+        $_SESSION['flash'] = ['type'=>'success','message'=>"Đã xóa {$deleted} file cũ, giữ lại 10 file mới nhất"];
+        header('Location: index.php?page=backup'); exit;
+    }
+}
+
+// ============================================================
+// EDIT INVOICE ACTION
+// ============================================================
+if ($page === 'invoices' && ($_GET['action'] ?? '') === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireRole(['superadmin', 'admin']);
+    $branch    = $_GET['branch'] ?? '';
+    $invoiceId = $_GET['id']     ?? '';
+    $ym        = $_GET['ym']     ?? date('Y_m');
+    $result    = updateInvoice($branch, $invoiceId, $_POST);
+    $_SESSION['flash'] = ['type'=>$result['success']?'success':'danger','message'=>$result['message']];
+    header("Location: index.php?page=invoices&branch={$branch}&ym={$ym}"); exit;
+}
+
+// ============================================================
 // RENDER VIEWS
 // ============================================================
 $viewMap = [
@@ -236,6 +310,8 @@ $viewMap = [
     'users'     => BASE_PATH . '/views/users/index.php',
     'categories'=> BASE_PATH . '/views/categories/index.php',
     'help'      => BASE_PATH . '/views/help/index.php',
+    'backup'    => BASE_PATH . '/views/backup/index.php',
+    'edit_invoice' => BASE_PATH . '/views/invoices/edit.php',
 ];
 
 $viewFile = $viewMap[$page] ?? null;

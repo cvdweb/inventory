@@ -58,7 +58,7 @@ function saveUser(array $userData): array
             'password'   => md5($userData['password']),
             'name'       => $userData['name'],
             'role'       => $userData['role'],
-            'branch'     => $userData['branch'] ?: null,
+            'branch'     => normalizeBranch($userData['branch'] ?? null),
             'icon'       => iconByRole($userData['role']),
             'active'     => true,
             'created_at' => $now,
@@ -75,7 +75,7 @@ function saveUser(array $userData): array
                 }
                 $u['name']       = $userData['name'];
                 $u['role']       = $userData['role'];
-                $u['branch']     = $userData['branch'] ?: null;
+                $u['branch']     = normalizeBranch($userData['branch'] ?? null);
                 $u['icon']       = iconByRole($userData['role']);
                 $u['active']     = isset($userData['active']) ? (bool)$userData['active'] : true;
                 $u['updated_at'] = $now;
@@ -156,6 +156,23 @@ function deleteUser(string $username): array
     return $ok
         ? ['success' => true, 'message' => "Đã xóa tài khoản '{$username}'"]
         : ['success' => false, 'message' => 'Lỗi ghi file'];
+}
+
+/**
+ * Chuẩn hóa branch: luôn lưu dạng array (hoặc null nếu rỗng)
+ * Input: string | array | null
+ */
+function normalizeBranch($branch): ?array
+{
+    if (empty($branch)) return null;
+    if (is_string($branch)) {
+        // Có thể là JSON array từ form multi-select hoặc string đơn
+        $decoded = json_decode($branch, true);
+        if (is_array($decoded)) $branch = $decoded;
+        else $branch = [$branch];
+    }
+    $filtered = array_values(array_filter((array)$branch, fn($b) => !empty($b)));
+    return empty($filtered) ? null : $filtered;
 }
 
 /**

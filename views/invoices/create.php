@@ -535,12 +535,14 @@ function renderItems() {
       <div>
         <input type="number" data-qty="${esc(item.code)}"
           class="form-control form-control-sm" style="text-align:right;font-weight:700"
-          min="0.01" step="1" value="${item.qty}"
+          min="0.01" step="0.01" value="${item.qty}"
+          onfocus="this.select()"
           onchange="setQty('${esc(item.code)}',this.value)">
       </div>
       <div>
         <input type="number" class="form-control form-control-sm" style="text-align:right"
-          min="0" value="${item.price_out}"
+          min="0" step="1000" value="${item.price_out}"
+          onfocus="this.select()"
           onchange="setPrice('${esc(item.code)}',this.value)">
       </div>
       <div id="lt_${esc(item.code)}"

@@ -271,8 +271,9 @@ function viewInvoice(inv) {
   document.getElementById('invoiceDetailBody').innerHTML = `
     <div class="d-flex justify-content-between align-items-start mb-3 pb-3 border-bottom">
       <div>
-        <div class="fw-800" style="font-size:17px"><?= htmlspecialchars($branchInfo['name']) ?></div>
-        <div class="text-muted" style="font-size:12px"><?= APP_NAME ?></div>
+        <div class="fw-800" style="font-size:16px"><?= htmlspecialchars(BUSINESS['name']) ?></div>
+        <div style="font-size:12px;color:#6b7280;margin-top:2px">📍 <?= htmlspecialchars(BUSINESS['address']) ?></div>
+        <div style="font-size:12px;color:#6b7280">📞 <?= htmlspecialchars(BUSINESS['phone']) ?><?= !empty(BUSINESS['tax_code']) ? ' &nbsp;|&nbsp; MST: ' . htmlspecialchars(BUSINESS['tax_code']) : '' ?></div>
       </div>
       <div class="text-end">
         <div style="font-size:12px;color:#6b7280">Mã hóa đơn</div>
@@ -309,25 +310,57 @@ function viewInvoice(inv) {
 function printInvoice() {
   const body = document.getElementById('invoiceDetailBody');
   if (!body) return;
-  const win = window.open('','_blank','width=1000,height=700');
+  const inv  = _currentInv || {};
+  const win  = window.open('','_blank','width=1000,height=700');
+
+  // Thông tin doanh nghiệp từ config PHP
+  const BIZ = <?= json_encode([
+    'name'    => htmlspecialchars((BRANCH_INFO[$reqBranch] ?? [])['print_name']    ?? BUSINESS['name']),
+    'address' => htmlspecialchars((BRANCH_INFO[$reqBranch] ?? [])['print_address'] ?? BUSINESS['address']),
+    'phone'   => htmlspecialchars((BRANCH_INFO[$reqBranch] ?? [])['print_phone']   ?? BUSINESS['phone']),
+    'tax'     => htmlspecialchars(BUSINESS['tax_code'] ?? ''),
+    'slogan'  => htmlspecialchars(BUSINESS['slogan'] ?? ''),
+  ], JSON_UNESCAPED_UNICODE) ?>;
+
   win.document.write(`<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><title>Hóa Đơn</title>
   <style>
-    @page{size:B1;margin:15mm 20mm}
+    @page{size:A4;margin:15mm 20mm}
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Times New Roman',serif;font-size:14pt;color:#000}
+    body{font-family:'Times New Roman',serif;font-size:13pt;color:#000}
     .fw-700,.fw-800,b,strong{font-weight:bold}
     .d-flex{display:flex}.justify-content-between{justify-content:space-between}
-    .align-items-start{align-items:flex-start}.mb-3{margin-bottom:6mm}.pb-3{padding-bottom:5mm}
+    .align-items-start{align-items:flex-start}.mb-3{margin-bottom:5mm}.pb-3{padding-bottom:4mm}
     .border-bottom{border-bottom:2px solid #000}.text-muted{color:#555}
     .text-end{text-align:right}.text-center{text-align:center}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:3mm 10mm;margin-bottom:6mm;font-size:13pt}
-    code{font-family:'Courier New',monospace;font-size:12pt;font-weight:bold}
-    table{width:100%;border-collapse:collapse;font-size:13pt;margin-bottom:6mm}
-    thead tr{background:#f0f0f0} th{border:1px solid #888;padding:3mm 4mm;text-align:left;font-weight:bold}
-    td{border:1px solid #bbb;padding:2.5mm 4mm} tfoot td{background:#f9f9f9;font-weight:bold;font-size:15pt}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:2mm 8mm;margin-bottom:5mm;font-size:12pt}
+    code{font-family:'Courier New',monospace;font-size:11pt;font-weight:bold}
+    table{width:100%;border-collapse:collapse;font-size:12pt;margin-bottom:5mm}
+    thead tr{background:#f0f0f0} th{border:1px solid #888;padding:2.5mm 3mm;text-align:left;font-weight:bold}
+    td{border:1px solid #bbb;padding:2mm 3mm} tfoot td{background:#f9f9f9;font-weight:bold;font-size:14pt}
     .text-success{color:#000} .table-light{background:#f0f0f0} .table-bordered{border:1px solid #888}
-    .table-sm td,.table-sm th{padding:2mm 3mm} i[class^="bi"]{display:none} g.col-6{} .col-12{}
+    .table-sm td,.table-sm th{padding:1.5mm 3mm} i[class^="bi"]{display:none}
+    .biz-header{display:flex;justify-content:space-between;align-items:flex-start;
+      border-bottom:2px solid #000;padding-bottom:4mm;margin-bottom:4mm}
+    .biz-name{font-size:15pt;font-weight:bold}
+    .biz-sub{font-size:10pt;color:#444;margin-top:1.5mm}
+    .biz-slogan{font-size:9pt;color:#777;font-style:italic;margin-top:1mm}
+    .inv-title{text-align:center;font-size:17pt;font-weight:bold;
+      letter-spacing:2px;margin:3mm 0 5mm;text-transform:uppercase}
   </style></head><body>
+  <div class="biz-header">
+    <div>
+      <div class="biz-name">${_esc(BIZ.name)}</div>
+      <div class="biz-sub">📍 ${_esc(BIZ.address)}</div>
+      <div class="biz-sub">📞 ${_esc(BIZ.phone)}${BIZ.tax ? '  &nbsp;|&nbsp;  MST: '+_esc(BIZ.tax) : ''}</div>
+      ${BIZ.slogan ? `<div class="biz-slogan">"${_esc(BIZ.slogan)}"</div>` : ''}
+    </div>
+    <div style="text-align:right;font-size:10pt">
+      <div style="color:#777">Số hóa đơn</div>
+      <code style="font-size:11pt">${_esc(inv.id||'')}</code>
+      <div style="color:#777;margin-top:2mm">Ngày: ${_esc((inv.created_at||'').slice(0,16))}</div>
+    </div>
+  </div>
+  <div class="inv-title">Hóa Đơn Bán Hàng</div>
   <div>${body.innerHTML}</div>
   <script>window.onload=function(){window.print();window.close()}<\/script>
   </body></html>`);
@@ -358,32 +391,32 @@ function _printDeliveryDoc(inv) {
     @page{size:A4;margin:15mm 20mm}
     *{box-sizing:border-box}
     body{font-family:'Times New Roman',serif;font-size:13pt;color:#000;margin:0}
-    h1{font-size:22pt;text-align:center;margin:0 0 4mm}
-    h2{font-size:14pt;margin:0 0 2mm}
-    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6mm;padding-bottom:4mm;border-bottom:2px solid #000}
-    .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:2mm 10mm;margin-bottom:6mm;font-size:12pt}
-    .info-row{margin-bottom:1mm}
-    .label{color:#555;font-size:11pt}
+    h1{font-size:20pt;text-align:center;margin:0 0 4mm}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5mm;padding-bottom:4mm;border-bottom:2px solid #000}
+    .biz-name{font-size:14pt;font-weight:bold}
+    .biz-sub{font-size:10pt;color:#555;margin-top:1mm}
+    .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:2mm 10mm;margin-bottom:5mm;font-size:12pt}
+    .label{color:#555;font-size:10pt}
     .highlight{background:#fff9c4;padding:2mm 4mm;border:1px solid #f59e0b;border-radius:4px}
-    table{width:100%;border-collapse:collapse;margin-bottom:8mm;font-size:12pt}
-    th{background:#e8e8e8;border:1px solid #888;padding:3mm 4mm;text-align:center;font-weight:bold}
-    td{border:1px solid #bbb;padding:3mm 4mm;vertical-align:middle}
-    .sign-row{display:flex;justify-content:space-between;margin-top:15mm}
+    table{width:100%;border-collapse:collapse;margin-bottom:7mm;font-size:12pt}
+    th{background:#e8e8e8;border:1px solid #888;padding:2.5mm 3mm;text-align:center;font-weight:bold}
+    td{border:1px solid #bbb;padding:2.5mm 3mm;vertical-align:middle}
+    .sign-row{display:flex;justify-content:space-between;margin-top:12mm}
     .sign-box{text-align:center;width:120px}
-    .sign-line{border-top:1px solid #000;margin-top:20mm;padding-top:2mm;font-size:11pt}
-    .no-price{background:#fef9c3;border:1px solid #fbbf24;padding:2mm 4mm;font-size:11pt;
-      text-align:center;margin-bottom:4mm;font-weight:bold}
-    .watermark{color:#ddd;font-size:10pt;text-align:center;margin-top:4mm}
+    .sign-line{border-top:1px solid #000;margin-top:18mm;padding-top:2mm;font-size:10pt}
+    .no-price{background:#fef9c3;border:1px solid #fbbf24;padding:2mm 4mm;font-size:11pt;text-align:center;margin-bottom:4mm;font-weight:bold}
+    .watermark{color:#ccc;font-size:9pt;text-align:center;margin-top:4mm}
   </style></head><body>
   <div class="header">
     <div>
-      <h2><?= htmlspecialchars($branchInfo['name']) ?></h2>
-      <div style="font-size:11pt;color:#555"><?= APP_NAME ?></div>
+      <div class="biz-name"><?= htmlspecialchars((BRANCH_INFO[$reqBranch] ?? [])['print_name'] ?? BUSINESS['name']) ?></div>
+      <div class="biz-sub">📍 <?= htmlspecialchars((BRANCH_INFO[$reqBranch] ?? [])['print_address'] ?? BUSINESS['address']) ?></div>
+      <div class="biz-sub">📞 <?= htmlspecialchars((BRANCH_INFO[$reqBranch] ?? [])['print_phone'] ?? BUSINESS['phone']) ?></div>
     </div>
-    <div style="text-align:right">
-      <div style="font-size:11pt;color:#555">Mã phiếu</div>
-      <div style="font-family:'Courier New',monospace;font-size:13pt;font-weight:bold">${_esc(inv.id||'')}</div>
-      <div style="font-size:11pt;color:#555">Lập ngày: ${_esc((inv.created_at||'').slice(0,10))}</div>
+    <div style="text-align:right;font-size:10pt">
+      <div style="color:#777">Mã phiếu</div>
+      <div style="font-family:'Courier New',monospace;font-size:12pt;font-weight:bold">${_esc(inv.id||'')}</div>
+      <div style="color:#777;margin-top:1mm">Lập: ${_esc((inv.created_at||'').slice(0,10))}</div>
     </div>
   </div>
 

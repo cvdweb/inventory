@@ -304,3 +304,84 @@ function getRevenueReport(string $branch, string $yearMonth = ''): array
     ksort($report);
     return array_values($report);
 }
+
+/**
+ * Lấy tất cả file hóa đơn của 1 chi nhánh (tất cả tháng/năm)
+ */
+function getAllInvoiceFiles(string $branch): array
+{
+    $pattern = DATA_PATH . "/{$branch}/invoices_*.json";
+    $files   = glob($pattern) ?: [];
+    // Sắp xếp mới nhất trước
+    rsort($files);
+    return $files;
+}
+
+/**
+ * Tìm kiếm hóa đơn xuyên suốt tất cả tháng/năm
+ * Tìm theo: tên khách, SĐT, mã SP, tên SP, mã hóa đơn
+ */
+function searchInvoices(array $branches, string $keyword, int $limit = 100): array
+{
+    if (empty(trim($keyword))) return [];
+
+    $kw      = mb_strtolower(trim($keyword), 'UTF-8');
+    $results = [];
+
+    foreach ($branches as $branch) {
+        foreach (getAllInvoiceFiles($branch) as $file) {
+            // Lấy tháng từ tên file: invoices_2025_04.json → 2025_04
+            preg_match('/invoices_(\d{4}_\d{2})\.json$/', $file, $m);
+            $ym = $m[1] ?? '';
+
+            $invoices = readJson($file);
+            foreach ($invoices as $inv) {
+                if (_invoiceMatchesKeyword($inv, $kw)) {
+                    $inv['_branch']    = $branch;
+                    $inv['_ym']        = $ym;
+                    $inv['_branch_name'] = BRANCHES[$branch]['name'] ?? $branch;
+                    $results[] = $inv;
+                    if (count($results) >= $limit) break 3;
+                }
+            }
+        }
+    }
+
+    // Sắp xếp mới nhất trước
+    usort($results, fn($a, $b) =>
+        strcmp($b['created_at'] ?? '', $a['created_at'] ?? '')
+    );
+
+    return $results;
+}
+
+/**
+ * Kiểm tra hóa đơn có khớp keyword không
+ */
+function _invoiceMatchesKeyword(array $inv, string $kw): bool
+{
+    $kw = mb_strtolower($kw, 'UTF-8');
+
+    // Tìm theo mã hóa đơn
+    if (str_contains(mb_strtolower($inv['id'] ?? '', 'UTF-8'), $kw)) return true;
+
+    // Tìm theo tên khách hàng
+    if (str_contains(mb_strtolower($inv['customer'] ?? '', 'UTF-8'), $kw)) return true;
+
+    // Tìm theo số điện thoại
+    if (str_contains($inv['phone'] ?? '', $kw)) return true;
+
+    // Tìm theo địa chỉ
+    if (str_contains(mb_strtolower($inv['address'] ?? '', 'UTF-8'), $kw)) return true;
+
+    // Tìm theo ghi chú
+    if (str_contains(mb_strtolower($inv['note'] ?? '', 'UTF-8'), $kw)) return true;
+
+    // Tìm theo sản phẩm trong hóa đơn (mã + tên)
+    foreach ($inv['items'] ?? [] as $item) {
+        if (str_contains(mb_strtolower($item['product_code'] ?? '', 'UTF-8'), $kw)) return true;
+        if (str_contains(mb_strtolower($item['product_name'] ?? '', 'UTF-8'), $kw)) return true;
+    }
+
+    return false;
+}

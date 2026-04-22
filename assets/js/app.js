@@ -124,7 +124,7 @@ function renderInvoiceItems() {
         </div>
         <div style="min-width:80px">
           <label class="form-label" style="font-size:11px">SL (${escHtml(item.unit)})</label>
-          <input type="number" class="form-control form-control-sm" min="0.01" step="0.01" value="${item.qty}"
+          <input type="number" class="form-control form-control-sm" min="1" step="1" value="${item.qty}"
             onchange="updateQty('${item.code}', this.value)">
         </div>
         <div>

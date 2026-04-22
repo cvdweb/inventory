@@ -329,8 +329,8 @@ function renderItems() {
         <div style="font-weight:600;font-size:13.5px">${esc(item.name)}</div>
         <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#9ca3af">${esc(item.code)} <span style="color:${item.stock<5?'#ef4444':'#10b981'};font-weight:700">Tồn: ${fmt(item.stock)} ${esc(item.unit)}</span></div>
       </div>
-      <div><input type="number" data-qty="${esc(item.code)}" class="form-control form-control-sm" style="text-align:right;font-weight:700" min="0.01" step="1" value="${item.qty}" onchange="setQty('${esc(item.code)}',this.value)"></div>
-      <div><input type="number" class="form-control form-control-sm" style="text-align:right" min="0" value="${item.price_out}" onchange="setPrice('${esc(item.code)}',this.value)"></div>
+      <div><input type="number" data-qty="${esc(item.code)}" class="form-control form-control-sm" style="text-align:right;font-weight:700" min="0.01" step="0.01" value="${item.qty}" onfocus="this.select()" onchange="setQty('${esc(item.code)}',this.value)"></div>
+      <div><input type="number" class="form-control form-control-sm" style="text-align:right" min="0" step="1000" value="${item.price_out}" onfocus="this.select()" onchange="setPrice('${esc(item.code)}',this.value)"></div>
       <div id="lt_${esc(item.code)}" style="font-family:'JetBrains Mono',monospace;font-weight:800;font-size:14px;color:#f59e0b;text-align:right">${fmtM(item.line_total)}</div>
       <div style="text-align:center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeItem('${esc(item.code)}')"><i class="bi bi-x"></i></button></div>
     </div>`).join('');

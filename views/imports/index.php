@@ -50,7 +50,7 @@ include BASE_PATH . '/views/layouts/header.php';
           <div class="col-6">
             <label class="form-label">Số lượng *</label>
             <div class="input-group">
-              <input type="number" name="qty" id="importQty" class="form-control" min="0.01" step="0.01" required placeholder="0">
+              <input type="number" name="qty" id="importQty" class="form-control" min="1" step="1" required placeholder="0">
               <span class="input-group-text" id="importUnit">đvt</span>
             </div>
           </div>

@@ -61,6 +61,13 @@
     </a>
     <?php endforeach; ?>
 
+    <?php if (in_array($user['role'] ?? '', ['superadmin', 'admin', 'sales'])): ?>
+    <div class="nav-section">Công Cụ</div>
+    <a href="index.php?page=search_invoices" class="nav-item <?= ($page === 'search_invoices') ? 'active' : '' ?>">
+      <i class="bi bi-search"></i><span>Tìm Kiếm HĐ</span>
+    </a>
+    <?php endif; ?>
+
     <div class="nav-section">Hệ Thống</div>
     <?php if (canManageUsers()): ?>
     <a href="index.php?page=categories" class="nav-item <?= ($page === 'categories') ? 'active' : '' ?>">

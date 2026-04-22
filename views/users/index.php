@@ -39,7 +39,14 @@ include BASE_PATH . '/views/layouts/header.php';
           $isSuperAdmin = ($u['role'] === 'superadmin');
           $isActive    = $u['active'] ?? true;
           $roleInfo    = $roles[$u['role']] ?? ['label' => $u['role'], 'color' => 'secondary', 'icon' => 'bi-person'];
-          $branchName  = $u['branch'] ? ($branches[$u['branch']]['name'] ?? $u['branch']) : '— Tất cả —';
+          // branch có thể là string (cũ) hoặc array (mới)
+          $userBranches = is_array($u['branch'] ?? null) ? $u['branch'] : ($u['branch'] ? [$u['branch']] : []);
+          if (empty($userBranches)) {
+              $branchName = '— Tất cả —';
+          } else {
+              $bNames = array_map(fn($bid) => $branches[$bid]['short'] ?? $bid, $userBranches);
+              $branchName = implode(', ', $bNames);
+          }
         ?>
         <tr class="<?= !$isActive ? 'opacity-50' : '' ?>">
           <td>
@@ -80,7 +87,9 @@ include BASE_PATH . '/views/layouts/header.php';
                   "username"  => $u["username"],
                   "name"      => $u["name"],
                   "role"      => $u["role"],
-                  "branch"    => $u["branch"] ?? "",
+                  "branch"    => is_array($u["branch"] ?? null)
+                                   ? $u["branch"]
+                                   : ($u["branch"] ? [$u["branch"]] : []),
                   "active"    => $u["active"] ?? true,
                 ], JSON_HEX_APOS) ?>)'>
                 <i class="bi bi-pencil"></i>
@@ -191,13 +200,21 @@ include BASE_PATH . '/views/layouts/header.php';
               </select>
             </div>
             <div class="col-6" id="addBranchWrap">
-              <label class="form-label">Chi nhánh</label>
-              <select name="branch" id="addBranch" class="form-select">
-                <option value="">-- Tất cả chi nhánh --</option>
+              <label class="form-label">Chi nhánh <span id="addBranchHint" style="font-size:11px;color:#9ca3af">(Sales: bắt buộc chọn)</span></label>
+              <div style="border:1.5px solid #e5e7eb;border-radius:8px;padding:10px 12px;background:#f9fafb" id="addBranchBox">
+                <div style="font-size:12px;color:#9ca3af;margin-bottom:6px">Chọn chi nhánh được phép truy cập:</div>
                 <?php foreach ($branches as $bId => $b): ?>
-                <option value="<?= $bId ?>"><?= htmlspecialchars($b['name']) ?></option>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="branch[]"
+                    value="<?= $bId ?>" id="add_br_<?= $bId ?>">
+                  <label class="form-check-label" for="add_br_<?= $bId ?>" style="font-size:13.5px">
+                    <i class="bi <?= $b['icon'] ?> me-1 text-<?= $b['color'] ?>"></i>
+                    <?= htmlspecialchars($b['name']) ?>
+                  </label>
+                </div>
                 <?php endforeach; ?>
-              </select>
+                <div class="form-text mt-1">Admin/Warehouse: để trống = toàn bộ chi nhánh</div>
+              </div>
             </div>
           </div>
         </div>
@@ -244,12 +261,19 @@ include BASE_PATH . '/views/layouts/header.php';
             </div>
             <div class="col-6">
               <label class="form-label">Chi nhánh</label>
-              <select name="branch" id="editBranch" class="form-select">
-                <option value="">-- Tất cả chi nhánh --</option>
+              <div style="border:1.5px solid #e5e7eb;border-radius:8px;padding:10px 12px;background:#f9fafb" id="editBranchBox">
                 <?php foreach ($branches as $bId => $b): ?>
-                <option value="<?= $bId ?>"><?= htmlspecialchars($b['name']) ?></option>
+                <div class="form-check">
+                  <input class="form-check-input edit-branch-chk" type="checkbox"
+                    name="branch[]" value="<?= $bId ?>" id="edit_br_<?= $bId ?>">
+                  <label class="form-check-label" for="edit_br_<?= $bId ?>" style="font-size:13.5px">
+                    <i class="bi <?= $b['icon'] ?> me-1 text-<?= $b['color'] ?>"></i>
+                    <?= htmlspecialchars($b['name']) ?>
+                  </label>
+                </div>
                 <?php endforeach; ?>
-              </select>
+                <div class="form-text">Admin/Warehouse: để trống = toàn bộ</div>
+              </div>
             </div>
             <div class="col-6">
               <label class="form-label">Trạng thái</label>
@@ -321,8 +345,19 @@ function openEditModal(u) {
   document.getElementById('editUsernameDisplay').textContent = u.username;
   document.getElementById('editName').value                 = u.name;
   document.getElementById('editRole').value                 = u.role;
-  document.getElementById('editBranch').value               = u.branch || '';
   document.getElementById('editActive').value               = u.active ? '1' : '0';
+
+  // Chuẩn hóa branch thành array (có thể là string cũ hoặc array mới)
+  let branches = [];
+  if (u.branch) {
+    branches = Array.isArray(u.branch) ? u.branch : [u.branch];
+  }
+
+  // Tick đúng checkbox chi nhánh
+  document.querySelectorAll('.edit-branch-chk').forEach(chk => {
+    chk.checked = branches.includes(chk.value);
+  });
+
   _modal('editUserModal').show();
 }
 

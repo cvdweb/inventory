@@ -70,19 +70,30 @@ function currentBranch(): ?string
     return $_SESSION['user_info']['branch'] ?? null;
 }
 
+function getUserBranches(): array
+{
+    $b = currentUser()['branch'] ?? null;
+    if (empty($b)) return [];
+    // Hỗ trợ cả string (cũ) lẫn array (mới)
+    return is_array($b) ? array_filter($b) : [$b];
+}
+
 function canAccessBranch(string $branch): bool
 {
     $user = currentUser();
     if (in_array($user['role'] ?? '', ['superadmin', 'admin', 'warehouse'])) return true;
-    return ($user['branch'] ?? '') === $branch;
+    return in_array($branch, getUserBranches());
 }
 
 function getAccessibleBranches(): array
 {
     $user     = currentUser();
     $branches = BRANCHES;
-    if (($user['role'] ?? '') === 'sales' && !empty($user['branch'])) {
-        return array_filter($branches, fn($b) => $b['id'] === $user['branch']);
+    $role     = $user['role'] ?? '';
+    if ($role === 'sales') {
+        $allowed = getUserBranches();
+        if (empty($allowed)) return []; // Chưa gán chi nhánh
+        return array_filter($branches, fn($b) => in_array($b['id'], $allowed));
     }
     return $branches;
 }

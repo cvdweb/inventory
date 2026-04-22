@@ -311,7 +311,8 @@ $viewMap = [
     'categories'=> BASE_PATH . '/views/categories/index.php',
     'help'      => BASE_PATH . '/views/help/index.php',
     'backup'    => BASE_PATH . '/views/backup/index.php',
-    'edit_invoice' => BASE_PATH . '/views/invoices/edit.php',
+    'edit_invoice'    => BASE_PATH . '/views/invoices/edit.php',
+    'search_invoices' => BASE_PATH . '/views/invoices/search.php',
 ];
 
 $viewFile = $viewMap[$page] ?? null;
@@ -323,7 +324,7 @@ if (!$viewFile || !file_exists($viewFile)) {
 }
 
 // Access control per page
-$salesOnly     = ['invoice', 'invoices'];
+$salesOnly     = ['invoice', 'invoices', 'search_invoices', 'edit_invoice'];
 $warehouseOnly = ['imports'];
 if (in_array($page, $salesOnly))     requireRole(['superadmin', 'admin', 'sales']);
 if (in_array($page, $warehouseOnly)) requireRole(['superadmin', 'admin', 'warehouse']);

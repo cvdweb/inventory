@@ -169,24 +169,24 @@ include BASE_PATH . '/views/layouts/header.php';
             </div>
             <div class="col-md-4">
               <label class="form-label">Tồn kho tối thiểu</label>
-              <input type="number" name="min_stock" id="pMinStock" class="form-control"
+              <input type="number" name="min_stock" id="pMinStock" class="form-control" onfocus="this.select()"
                 value="5" min="0" step="0.01">
               <div class="form-text">Cảnh báo khi tồn kho dưới mức này</div>
             </div>
 
             <div class="col-md-4">
               <label class="form-label">Giá nhập (₫)</label>
-              <input type="number" name="price_in" id="pPriceIn" class="form-control"
+              <input type="number" name="price_in" id="pPriceIn" class="form-control" onfocus="this.select()"
                 value="0" min="0" step="1000">
             </div>
             <div class="col-md-4">
               <label class="form-label">Giá bán (₫) *</label>
-              <input type="number" name="price_out" id="pPriceOut" class="form-control"
+              <input type="number" name="price_out" id="pPriceOut" class="form-control" onfocus="this.select()"
                 value="0" min="0" step="1000" required>
             </div>
             <div class="col-md-4">
               <label class="form-label">Tồn kho ban đầu</label>
-              <input type="number" name="stock" id="pStock" class="form-control"
+              <input type="number" name="stock" id="pStock" class="form-control" onfocus="this.select()"
                 value="0" min="0" step="0.01">
               <div class="form-text">Chỉ điền khi thêm mới</div>
             </div>

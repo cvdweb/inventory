@@ -353,12 +353,7 @@ function printInvoice() {
       <div class="biz-sub">📍 ${_esc(BIZ.address)}</div>
       <div class="biz-sub">📞 ${_esc(BIZ.phone)}${BIZ.tax ? '  &nbsp;|&nbsp;  MST: '+_esc(BIZ.tax) : ''}</div>
       ${BIZ.slogan ? `<div class="biz-slogan">"${_esc(BIZ.slogan)}"</div>` : ''}
-    </div>
-    <div style="text-align:right;font-size:10pt">
-      <div style="color:#777">Số hóa đơn</div>
-      <code style="font-size:11pt">${_esc(inv.id||'')}</code>
-      <div style="color:#777;margin-top:2mm">Ngày: ${_esc((inv.created_at||'').slice(0,16))}</div>
-    </div>
+    </div>  
   </div>
   <div class="inv-title">Hóa Đơn Bán Hàng</div>
   <div>${body.innerHTML}</div>
@@ -412,12 +407,7 @@ function _printDeliveryDoc(inv) {
       <div class="biz-name"><?= htmlspecialchars((BRANCH_INFO[$reqBranch] ?? [])['print_name'] ?? BUSINESS['name']) ?></div>
       <div class="biz-sub">📍 <?= htmlspecialchars((BRANCH_INFO[$reqBranch] ?? [])['print_address'] ?? BUSINESS['address']) ?></div>
       <div class="biz-sub">📞 <?= htmlspecialchars((BRANCH_INFO[$reqBranch] ?? [])['print_phone'] ?? BUSINESS['phone']) ?></div>
-    </div>
-    <div style="text-align:right;font-size:10pt">
-      <div style="color:#777">Mã phiếu</div>
-      <div style="font-family:'Courier New',monospace;font-size:12pt;font-weight:bold">${_esc(inv.id||'')}</div>
-      <div style="color:#777;margin-top:1mm">Lập: ${_esc((inv.created_at||'').slice(0,10))}</div>
-    </div>
+    </div>   
   </div>
 
   <h1>PHIẾU GIAO HÀNG</h1>

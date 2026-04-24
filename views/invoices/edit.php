@@ -109,12 +109,20 @@ include BASE_PATH . '/views/layouts/header.php';
               value="<?= htmlspecialchars($invoice['delivery_date']??'') ?>"
               onchange="updateDelSum(this.value)">
           </div>
+          <div class="col-md-2">
+            <label class="form-label" style="font-size:11.5px">Giá vận chuyển</label>
+            <input type="number" name="shipping_fee" id="inpShippingFee"
+              class="form-control form-control-sm" min="0" step="1000"
+              value="<?= htmlspecialchars($invoice['shipping_fee']??0) ?>"
+              placeholder="0 ₫"
+              oninput="updateTotals()">
+          </div>
           <div class="col-md-3">
             <label class="form-label" style="font-size:11.5px">Địa chỉ giao</label>
             <input type="text" name="address" class="form-control form-control-sm"
               value="<?= htmlspecialchars($invoice['address']??'') ?>">
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label class="form-label" style="font-size:11.5px">Ghi chú tài xế</label>
             <input type="text" name="delivery_note" class="form-control form-control-sm"
               value="<?= htmlspecialchars($invoice['delivery_note']??'') ?>">
@@ -338,7 +346,9 @@ function renderItems() {
 }
 function updateTotals() {
   const t=invoiceItems.reduce((s,i)=>s+i.line_total,0);
-  const el=document.getElementById('invoiceTotal'); if(el)el.textContent=fmtM(t);
+  const shippingFee=parseFloat(document.getElementById('inpShippingFee')?.value||0);
+  const finalTotal=t+shippingFee;
+  const el=document.getElementById('invoiceTotal'); if(el)el.textContent=fmtM(finalTotal);
   syncJson();
 }
 function syncJson() { const el=document.getElementById('invoiceItemsJson'); if(el)el.value=JSON.stringify(invoiceItems); }

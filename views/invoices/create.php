@@ -198,12 +198,19 @@ include BASE_PATH . '/views/layouts/header.php';
               class="form-control form-control-sm" min="<?= date('Y-m-d') ?>"
               onchange="onDeliveryDateChange(this.value)">
           </div>
+          <div class="col-md-2">
+            <label class="form-label" style="font-size:11.5px">Giá vận chuyển</label>
+            <input type="number" name="shipping_fee" id="inpShippingFee"
+              class="form-control form-control-sm" value="0" min="0" step="1000"
+              placeholder="0 ₫"
+              oninput="updateTotals()">
+          </div>
           <div class="col-md-3">
             <label class="form-label" style="font-size:11.5px">Địa chỉ giao hàng</label>
             <input type="text" name="address" class="form-control form-control-sm"
               placeholder="Để trống = lấy tại quầy">
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label class="form-label" style="font-size:11.5px">Ghi chú cho tài xế</label>
             <input type="text" name="delivery_note" class="form-control form-control-sm"
               placeholder="VD: Gọi trước 30 phút, giao tầng 2...">
@@ -562,8 +569,10 @@ function renderItems() {
 
 function updateTotals() {
   const total = invoiceItems.reduce((s,i) => s + i.line_total, 0);
+  const shippingFee = parseFloat(document.getElementById('inpShippingFee')?.value || 0);
+  const finalTotal = total + shippingFee;
   const el = document.getElementById('invoiceTotal');
-  if (el) el.textContent = fmtM(total);
+  if (el) el.textContent = fmtM(finalTotal);
   syncJson();
 }
 function syncJson() {

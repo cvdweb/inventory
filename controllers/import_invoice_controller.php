@@ -65,6 +65,7 @@ function invoiceProcess(array $post): array
     $delivery_note= $post['delivery_note'] ?? '';
     $payment      = $post['payment']       ?? 'cash';
     $delivery_date= $post['delivery_date'] ?? '';   // rỗng = lấy tại quầy
+    $shipping_fee = floatval($post['shipping_fee'] ?? 0);  // Giá vận chuyển
     $user         = currentUser();
 
     if (!$branch || empty($items)) {
@@ -122,6 +123,7 @@ function invoiceProcess(array $post): array
         'payment'         => $payment,
         'delivery_date'   => $delivery_date,
         'delivery_status' => $delivery_status,
+        'shipping_fee'    => $shipping_fee,
         'created_by'      => $user['name'] ?? 'System',
     ];
 
@@ -268,7 +270,9 @@ function updateInvoice(string $branch, string $invoiceId, array $post): array
 
     // 6. Ghi log thay đổi
     $user    = currentUser();
-    $total   = array_sum(array_column($processedItems, 'line_total'));
+    $subtotal = array_sum(array_column($processedItems, 'line_total'));
+    $shippingFee = floatval($post['shipping_fee'] ?? $original['shipping_fee'] ?? 0);
+    $total   = $subtotal + $shippingFee;
     $editLog = $original['edit_log'] ?? [];
     $editLog[] = [
         'edited_by'    => $user['name'] ?? 'System',
@@ -300,6 +304,7 @@ function updateInvoice(string $branch, string $invoiceId, array $post): array
             $inv['payment']         = $post['payment']       ?? $original['payment'];
             $inv['delivery_date']   = $delivery_date;
             $inv['delivery_status'] = $delivery_status;
+            $inv['shipping_fee']    = $shippingFee;
             $inv['items']           = $processedItems;
             $inv['total']           = $total;
             $inv['updated_at']      = date('Y-m-d H:i:s');

@@ -174,11 +174,13 @@ function createInvoice(string $branch, array $invoiceData): array
     $invoiceData['created_at'] = date('Y-m-d H:i:s');
     $invoiceData['branch']     = $branch;
 
-    // Tính tổng
+    // Tính tổng (cộng giá vận chuyển)
     $total = 0;
     foreach ($invoiceData['items'] as $item) {
         $total += $item['line_total'];
     }
+    $shippingFee = $invoiceData['shipping_fee'] ?? 0;
+    $total += $shippingFee;
     $invoiceData['total'] = $total;
     $invoices[]           = $invoiceData;
 

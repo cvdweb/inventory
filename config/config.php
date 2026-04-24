@@ -17,7 +17,7 @@ define('BUSINESS', [
     'address' => 'Nam Sông Hậu, KV Cà Lăng A, p.Vĩnh Châu, TP. Cần Thơ', // Địa chỉ
     'phone'   => '0299 6295999 - 6282666 DĐ: 0913 862162', // Số điện thoại
     'email'   => 'truongphuvlxd65@gmail.com', // Email
-    'tax_code'=> '1234567890',
+    'tax_code'=> '',
     'slogan'  => 'Chất lượng — Uy tín — Giá tốt',
 ]);
 
@@ -54,7 +54,7 @@ define('BRANCHES', [
 ]);
 
 // Đơn vị tính
-define('UNITS', ['kg', 'tấn', 'viên', 'tờ','tấm', 'cây', 'm', 'm²', 'bộ', 'thùng', 'bao', 'cuộn', 'cái', 'chiếc']);
+define('UNITS', ['kg', 'tấn', 'viên', 'tờ','tấm', 'cây', 'm', 'm²', 'bộ', 'thùng', 'bao', 'cuộn', 'cái', 'chiếc','chuyến']);
 
 // Múi giờ
 date_default_timezone_set('Asia/Ho_Chi_Minh');

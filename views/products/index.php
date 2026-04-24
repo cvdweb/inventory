@@ -177,12 +177,12 @@ include BASE_PATH . '/views/layouts/header.php';
             <div class="col-md-4">
               <label class="form-label">Giá nhập (₫)</label>
               <input type="number" name="price_in" id="pPriceIn" class="form-control" onfocus="this.select()"
-                value="0" min="0" step="1000">
+                value="0" min="0" step="100">
             </div>
             <div class="col-md-4">
               <label class="form-label">Giá bán (₫) *</label>
               <input type="number" name="price_out" id="pPriceOut" class="form-control" onfocus="this.select()"
-                value="0" min="0" step="1000" required>
+                value="0" min="0" step="100" required>
             </div>
             <div class="col-md-4">
               <label class="form-label">Tồn kho ban đầu</label>

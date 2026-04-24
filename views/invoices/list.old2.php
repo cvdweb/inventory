@@ -297,11 +297,7 @@ function viewInvoice(inv) {
       </thead>
       <tbody>${rows}</tbody>
       <tfoot>
-        <tr><td colspan="4" class="text-end fw-700">Tổng hàng hóa:</td>
-          <td class="text-end fw-800 text-success" style="font-size:15px">${_money((inv.total||0)-(inv.shipping_fee||0))}</td></tr>
-        ${(inv.shipping_fee||0)>0?`<tr><td colspan="4" class="text-end fw-700">Giá vận chuyển:</td>
-          <td class="text-end fw-800 text-warning" style="font-size:15px">${_money(inv.shipping_fee||0)}</td></tr>`:''}
-        <tr style="background:#f9fafb"><td colspan="4" class="text-end fw-700">TỔNG CỘNG:</td>
+        <tr><td colspan="4" class="text-end fw-700">Tổng cộng:</td>
           <td class="text-end fw-800 text-success" style="font-size:15px">${_money(inv.total||0)}</td></tr>
       </tfoot>
     </table>
@@ -315,27 +311,30 @@ function printInvoice() {
   const inv = _currentInv;
   if (!inv) return;
 
+  // Thông tin doanh nghiệp từ PHP config
   const BIZ = <?= json_encode([
     'name'        => BUSINESS['name'],
     'address'     => BUSINESS['address'],
     'phone'       => BUSINESS['phone'],
-    'slogan'      => BUSINESS['slogan'] ?? '',
+    'tax'         => BUSINESS['tax_code'] ?? '',
+    'slogan'      => BUSINESS['slogan']   ?? '',
     'branch_vlxd' => BRANCHES['branch_1_vlxd']['name'],
     'branch_mt'   => BRANCHES['branch_2_maiton']['name'],
   ], JSON_UNESCAPED_UNICODE) ?>;
 
   const branchName = inv.branch === 'branch_1_vlxd' ? BIZ.branch_vlxd
                    : inv.branch === 'branch_2_maiton' ? BIZ.branch_mt : '';
+
   const payLabel = {cash:'Tiền mặt',transfer:'Chuyển khoản',cod:'COD',credit:'Công nợ'};
 
   const rows = (inv.items||[]).map((item, idx) => `
     <tr>
-      <td style="text-align:center">${idx+1}</td>
+      <td style="text-align:center;color:#555">${idx+1}</td>
       <td>
         <div style="font-weight:bold">${_esc(item.product_name)}</div>
-        <div style="font-size:11pt;color:#666">${_esc(item.product_code)}</div>
+        <div style="font-size:10pt;color:#777">${_esc(item.product_code)}</div>
       </td>
-      <td style="text-align:center;font-weight:bold;font-size:15pt">${Number(item.qty).toLocaleString('vi-VN')}</td>
+      <td style="text-align:center;font-weight:bold">${Number(item.qty).toLocaleString('vi-VN')}</td>
       <td style="text-align:center">${_esc(item.unit)}</td>
       <td style="text-align:right">${_money(item.price_out)}</td>
       <td style="text-align:right;font-weight:bold">${_money(item.line_total)}</td>
@@ -345,67 +344,75 @@ function printInvoice() {
   win.document.write(`<!DOCTYPE html>
 <html lang="vi"><head>
 <meta charset="UTF-8">
-<title>Hóa Đơn</title>
+<title>Hóa Đơn — ${_esc(inv.id||'')}</title>
 <style>
-  @page { size: A4; margin: 12mm 16mm; }
+  @page { size: A4; margin: 14mm 18mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Times New Roman', serif; font-size: 14pt; color: #000; }
+  body { font-family: 'Times New Roman', serif; font-size: 12.5pt; color: #000; }
 
-  /* Header doanh nghiệp — chỉ thông tin công ty, căn giữa */
+  /* Header doanh nghiệp */
   .biz-header {
-    text-align: center;
-    padding-bottom: 5mm;
-    margin-bottom: 5mm;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: 4mm;
+    // border-bottom: 2.5px solid #000;
+    margin-bottom: 4mm;
   }
-  .biz-name    { font-size: 18pt; font-weight: bold; letter-spacing: .5px; }
-  .biz-branch  { font-size: 12pt; color: #555; margin-top: 2mm; }
-  .biz-contact { font-size: 14pt; color: #222; margin-top: 2mm; font-weight: bold; }
-  .biz-slogan  { font-size: 11pt; color: #777; font-style: italic; margin-top: 2mm; }
+  .biz-name    { font-size: 15pt; font-weight: bold; letter-spacing: .5px; }
+  .biz-branch  { font-size: 12pt; color: #666; margin-top: 1.5mm; }
+  .biz-contact { font-size: 14pt; color: #444; margin-top: 1mm; }
+  .biz-slogan  { font-size: 10pt; color: #888; font-style: italic; margin-top: 1mm; }
+  .inv-no-block { text-align: right; font-size: 10pt; }
+  .inv-no-block code { font-family: 'Courier New', monospace; font-size: 11.5pt; font-weight: bold; display: block; margin-top: 1mm; }
 
   /* Tiêu đề */
   .inv-title {
     text-align: center;
-    font-size: 20pt;
+    font-size: 18pt;
     font-weight: bold;
     letter-spacing: 3px;
     text-transform: uppercase;
-    margin: 5mm 0 6mm;
+    margin: 4mm 0 5mm;
   }
 
   /* Thông tin khách */
   .info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 2mm 8mm;
-    font-size: 13pt;
-    margin-bottom: 6mm;
-    padding: 3.5mm 5mm;
-    border: 1px solid #bbb;
+    gap: 1.5mm 8mm;
+    font-size: 11.5pt;
+    margin-bottom: 5mm;
+    padding: 3mm 4mm;
+    border: 1px solid #ccc;
     border-radius: 2mm;
     background: #fafafa;
   }
-  .info-label { color: #666; font-size: 11pt; }
-  .info-val   { font-weight: bold; font-size: 14pt; }
+  .info-label { color: #666; font-size: 10pt; }
+  .info-val   { font-weight: bold; }
 
   /* Bảng hàng hóa */
-  table { width: 100%; border-collapse: collapse; margin-bottom: 5mm; font-size: 13pt; }
-  thead tr { background: #e0e0e0; }
-  th { border: 1px solid #888; padding: 3mm 4mm; font-weight: bold; font-size: 13pt; }
-  td { border: 1px solid #bbb; padding: 3mm 4mm; vertical-align: middle; }
-  tfoot td { background: #efefef; font-weight: bold; font-size: 15pt; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 4mm; font-size: 14pt; }
+  thead tr { background: #e8e8e8; }
+  th { border: 1px solid #888; padding: 2.5mm 3mm; font-weight: bold; }
+  td { border: 1px solid #bbb; padding: 2mm 3mm; vertical-align: middle; }
+  tfoot td { background: #f0f0f0; font-weight: bold; font-size: 14pt; }
 
-  .inv-note { font-size: 12pt; color: #444; margin-bottom: 4mm;
-    padding: 2mm 0; border-top: 1px dashed #ccc; }
+  /* Footer */
+  .inv-note { font-size: 10.5pt; color: #555; margin-bottom: 4mm; padding: 2mm 0; border-top: 1px dashed #ccc; }
+  .watermark { color: #ccc; font-size: 9pt; text-align: center; margin-top: 5mm; }
 </style>
 </head><body>
 
-<!-- Header: chỉ thông tin doanh nghiệp, căn giữa -->
+<!-- Header doanh nghiệp -->
 <div class="biz-header">
-  <div class="biz-name">${_esc(BIZ.name)}</div>
-  ${branchName ? `<div class="biz-branch">${_esc(branchName)}</div>` : ''}
-  <div class="biz-contact">📍 ${_esc(BIZ.address)}</div>
-  <div class="biz-contact">📞 ${_esc(BIZ.phone)}</div>
-  ${BIZ.slogan ? `<div class="biz-slogan">"${_esc(BIZ.slogan)}"</div>` : ''}
+  <div>
+    <div class="biz-name">${_esc(BIZ.name)}</div>
+    ${branchName ? `<div class="biz-branch">${_esc(branchName)}</div>` : ''}
+    <div class="biz-contact">📍 ${_esc(BIZ.address)}</div>
+    <div class="biz-contact">📞 ${_esc(BIZ.phone)}${BIZ.tax ? '&nbsp;&nbsp;|&nbsp;&nbsp;MST: ' + _esc(BIZ.tax) : ''}</div>
+    ${BIZ.slogan ? `<div class="biz-slogan">"${_esc(BIZ.slogan)}"</div>` : ''}
+  </div> 
 </div>
 
 <!-- Tiêu đề -->
@@ -424,32 +431,28 @@ function printInvoice() {
 <table>
   <thead>
     <tr>
-      <th style="width:36px;text-align:center">STT</th>
+      <th style="width:32px;text-align:center">STT</th>
       <th style="text-align:left">Tên hàng hóa</th>
-      <th style="width:80px;text-align:center">Số lượng</th>
-      <th style="width:56px;text-align:center">ĐVT</th>
-      <th style="width:115px;text-align:right">Đơn giá</th>
-      <th style="width:125px;text-align:right">Thành tiền</th>
+      <th style="width:72px;text-align:center">Số lượng</th>
+      <th style="width:52px;text-align:center">ĐVT</th>
+      <th style="width:110px;text-align:right">Đơn giá</th>
+      <th style="width:120px;text-align:right">Thành tiền</th>
     </tr>
   </thead>
   <tbody>${rows}</tbody>
   <tfoot>
     <tr>
-      <td colspan="5" style="text-align:right">Tổng hàng hóa:</td>
-      <td style="text-align:right;font-size:16pt">${_money((inv.total||0)-(inv.shipping_fee||0))}</td>
-    </tr>
-    ${(inv.shipping_fee||0)>0?`<tr>
-      <td colspan="5" style="text-align:right">Giá vận chuyển:</td>
-      <td style="text-align:right;font-size:16pt">${_money(inv.shipping_fee||0)}</td>
-    </tr>`:''}
-    <tr style="background:#efefef">
-      <td colspan="5" style="text-align:right;font-weight:bold">TỔNG CỘNG:</td>
-      <td style="text-align:right;font-weight:bold;font-size:18pt">${_money(inv.total||0)}</td>
+      <td colspan="5" style="text-align:right;font-size:13pt">Tổng cộng:</td>
+      <td style="text-align:right;font-size:15pt;color:#000">${_money(inv.total||0)}</td>
     </tr>
   </tfoot>
 </table>
 
 ${inv.note ? `<div class="inv-note"><b>Ghi chú:</b> ${_esc(inv.note)}</div>` : ''}
+
+<div class="watermark">
+  Hóa đơn ${_esc(inv.id||'')} — In lúc ${new Date().toLocaleString('vi-VN')}
+</div>
 
 <script>window.onload = function(){ window.print(); window.close(); }<\/script>
 </body></html>`);
@@ -465,7 +468,7 @@ function _printDeliveryDoc(inv) {
     'name'        => BUSINESS['name'],
     'address'     => BUSINESS['address'],
     'phone'       => BUSINESS['phone'],
-    'slogan'      => BUSINESS['slogan'] ?? '',
+    'tax'         => BUSINESS['tax_code'] ?? '',
     'branch_vlxd' => BRANCHES['branch_1_vlxd']['name'],
     'branch_mt'   => BRANCHES['branch_2_maiton']['name'],
   ], JSON_UNESCAPED_UNICODE) ?>;
@@ -481,11 +484,11 @@ function _printDeliveryDoc(inv) {
     <tr>
       <td style="text-align:center">${idx+1}</td>
       <td>
-        <div style="font-weight:bold;font-size:15pt">${_esc(i.product_name)}</div>
-        <div style="font-size:12pt;color:#666">${_esc(i.product_code)}</div>
+        <div style="font-weight:bold">${_esc(i.product_name)}</div>
+        <div style="font-size:10pt;color:#777">${_esc(i.product_code)}</div>
       </td>
-      <td style="text-align:center;font-size:18pt;font-weight:bold">${Number(i.qty).toLocaleString('vi-VN')}</td>
-      <td style="text-align:center;font-size:14pt">${_esc(i.unit)}</td>
+      <td style="text-align:center;font-size:15pt;font-weight:bold">${Number(i.qty).toLocaleString('vi-VN')}</td>
+      <td style="text-align:center">${_esc(i.unit)}</td>
       <td></td>
     </tr>`).join('');
 
@@ -493,93 +496,101 @@ function _printDeliveryDoc(inv) {
   win.document.write(`<!DOCTYPE html>
 <html lang="vi"><head>
 <meta charset="UTF-8">
-<title>Phiếu Giao Hàng</title>
+<title>Phiếu Giao Hàng — ${_esc(inv.id||'')}</title>
 <style>
-  @page { size: A4; margin: 12mm 16mm; }
+  @page { size: A4; margin: 14mm 18mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Times New Roman', serif; font-size: 14pt; color: #000; }
+  body { font-family: 'Times New Roman', serif; font-size: 12.5pt; color: #000; }
 
-  /* Header: chỉ doanh nghiệp, căn giữa */
+  /* Header */
   .biz-header {
-    text-align: center;
-    padding-bottom: 5mm;
-    margin-bottom: 5mm;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: 4mm;
+    // border-bottom: 2.5px solid #000;
+    margin-bottom: 4mm;
   }
-  .biz-name    { font-size: 18pt; font-weight: bold; letter-spacing: .5px; }
-  .biz-branch  { font-size: 12pt; color: #555; margin-top: 2mm; }
-  .biz-contact { font-size: 14pt; color: #222; margin-top: 2mm; font-weight: bold; }
-  .biz-slogan  { font-size: 11pt; color: #777; font-style: italic; margin-top: 2mm; }
+  .biz-name    { font-size: 15pt; font-weight: bold; letter-spacing: .5px; }
+  .biz-branch  { font-size: 10pt; color: #666; margin-top: 1.5mm; }
+  .biz-contact { font-size: 14pt; color: #444; margin-top: 1mm; }
+  .doc-no      { text-align: right; font-size: 10pt; }
+  .doc-no code { font-family: 'Courier New', monospace; font-size: 11.5pt; font-weight: bold; display: block; margin-top: 1mm; }
 
   /* Tiêu đề */
   .doc-title {
     text-align: center;
-    font-size: 20pt;
+    font-size: 18pt;
     font-weight: bold;
     letter-spacing: 3px;
     text-transform: uppercase;
-    margin: 5mm 0 6mm;
+    margin: 4mm 0 5mm;
   }
 
   /* Thông tin giao hàng */
   .info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 2.5mm 8mm;
-    font-size: 13pt;
-    margin-bottom: 6mm;
-    padding: 4mm 5mm;
-    border: 1px solid #bbb;
+    gap: 2mm 8mm;
+    font-size: 11.5pt;
+    margin-bottom: 5mm;
+    padding: 3mm 4mm;
+    border: 1px solid #ccc;
     border-radius: 2mm;
     background: #fafafa;
   }
-  .info-label { color: #666; font-size: 11pt; }
-  .info-val   { font-weight: bold; font-size: 15pt; }
+  .info-label { color: #666; font-size: 10pt; }
+  .info-val   { font-weight: bold; }
   .delivery-date {
-    font-size: 15pt;
+    font-size: 13pt;
     font-weight: bold;
     background: #fff9c4;
     border: 1px solid #f59e0b;
     border-radius: 2mm;
-    padding: 2mm 4mm;
+    padding: 1.5mm 3mm;
     display: inline-block;
   }
 
   /* Ghi chú tài xế */
   .driver-note {
     margin-bottom: 5mm;
-    padding: 3mm 5mm;
+    padding: 2.5mm 4mm;
     background: #f0f9ff;
     border-left: 3px solid #3b82f6;
-    font-size: 13pt;
+    font-size: 11.5pt;
   }
 
   /* Bảng hàng */
-  table { width: 100%; border-collapse: collapse; margin-bottom: 7mm; font-size: 14pt; }
-  thead tr { background: #e0e0e0; }
-  th { border: 1px solid #888; padding: 3mm 4mm; font-weight: bold; font-size: 13pt; }
-  td { border: 1px solid #bbb; padding: 3.5mm 4mm; vertical-align: middle; }
-  tfoot td { background: #efefef; font-weight: bold; font-size: 15pt; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 6mm; font-size: 14pt; }
+  thead tr { background: #e8e8e8; }
+  th { border: 1px solid #888; padding: 2.5mm 3mm; font-weight: bold; }
+  td { border: 1px solid #bbb; padding: 2.5mm 3mm; vertical-align: middle; }
+  tfoot td { background: #f0f0f0; font-weight: bold; }
 
   /* Ký tên */
   .sign-row {
     display: flex;
     justify-content: space-around;
-    margin-top: 14mm;
+    margin-top: 12mm;
     text-align: center;
   }
-  .sign-box  { width: 140px; }
-  .sign-name { font-weight: bold; font-size: 13pt; }
-  .sign-line { border-top: 1px solid #000; margin-top: 20mm; padding-top: 2mm; font-size: 11pt; color: #555; }
+  .sign-box { width: 130px; }
+  .sign-name { font-weight: bold; font-size: 11pt; }
+  .sign-line { border-top: 1px solid #000; margin-top: 18mm; padding-top: 2mm; font-size: 9.5pt; color: #555; }
+
+  .watermark { color: #ccc; font-size: 8.5pt; text-align: center; margin-top: 5mm; }
 </style>
 </head><body>
 
-<!-- Header: chỉ doanh nghiệp, căn giữa -->
+<!-- Header doanh nghiệp -->
 <div class="biz-header">
-  <div class="biz-name">${_esc(BIZ.name)}</div>
-  ${branchName ? `<div class="biz-branch"> ${_esc(branchName)}</div>` : ''}
-  <div class="biz-contact">📍 ${_esc(BIZ.address)}</div>
-  <div class="biz-contact">📞 ${_esc(BIZ.phone)}</div>
-  ${BIZ.slogan ? `<div class="biz-slogan">"${_esc(BIZ.slogan)}"</div>` : ''}
+  <div>
+    <div class="biz-name">${_esc(BIZ.name)}</div>
+    ${branchName ? `<div class="biz-branch">Chi nhánh: ${_esc(branchName)}</div>` : ''}
+    <div class="biz-contact">📍 ${_esc(BIZ.address)}</div>
+    <div class="biz-contact">📞 ${_esc(BIZ.phone)}${BIZ.tax ? '&nbsp;&nbsp;|&nbsp;&nbsp;MST: ' + _esc(BIZ.tax) : ''}</div>
+  </div>
+ 
 </div>
 
 <!-- Tiêu đề -->
@@ -589,11 +600,11 @@ function _printDeliveryDoc(inv) {
 <div class="info-grid">
   <div>
     <div class="info-label">Khách hàng</div>
-    <div class="info-val">${_esc(inv.customer||'')}</div>
+    <div class="info-val" style="font-size:14pt">${_esc(inv.customer||'')}</div>
   </div>
   <div>
     <div class="info-label">Số điện thoại</div>
-    <div class="info-val">${_esc(inv.phone||'—')}</div>
+    <div class="info-val" style="font-size:14pt">${_esc(inv.phone||'—')}</div>
   </div>
   <div>
     <div class="info-label">Ngày giao hàng</div>
@@ -601,7 +612,7 @@ function _printDeliveryDoc(inv) {
   </div>
   <div>
     <div class="info-label">Địa chỉ giao hàng</div>
-    <div class="info-val" style="font-size:13pt">${_esc(inv.address||'—')}</div>
+    <div class="info-val">${_esc(inv.address||'—')}</div>
   </div>
 </div>
 
@@ -614,24 +625,24 @@ ${inv.delivery_note ? `
 <table>
   <thead>
     <tr>
-      <th style="width:40px;text-align:center">STT</th>
+      <th style="width:36px;text-align:center">STT</th>
       <th style="text-align:left">Tên hàng hóa</th>
-      <th style="width:90px;text-align:center">Số lượng</th>
-      <th style="width:65px;text-align:center">ĐVT</th>
+      <th style="width:80px;text-align:center">Số lượng</th>
+      <th style="width:60px;text-align:center">ĐVT</th>
       <th style="width:110px">Ghi chú</th>
     </tr>
   </thead>
   <tbody>${rows}</tbody>
   <tfoot>
     <tr>
-      <td colspan="2" style="text-align:right;font-size:13pt">Tổng số loại hàng:</td>
-      <td style="text-align:center">${(inv.items||[]).length}</td>
+      <td colspan="2" style="text-align:right">Tổng số loại hàng:</td>
+      <td style="text-align:center;font-size:14pt">${(inv.items||[]).length}</td>
       <td colspan="2"></td>
     </tr>
   </tfoot>
 </table>
 
-${inv.note ? `<div style="margin-bottom:6mm;font-size:13pt;color:#444"><b>Ghi chú:</b> ${_esc(inv.note)}</div>` : ''}
+${inv.note ? `<div style="margin-bottom:6mm;font-size:11pt;color:#555"><b>Ghi chú:</b> ${_esc(inv.note)}</div>` : ''}
 
 <!-- Ký tên -->
 <div class="sign-row">
@@ -649,6 +660,7 @@ ${inv.note ? `<div style="margin-bottom:6mm;font-size:13pt;color:#444"><b>Ghi ch
   </div>
 </div>
 
+<div class="watermark">Phiếu giao hàng ${_esc(inv.id||'')} — In lúc ${new Date().toLocaleString('vi-VN')}</div>
 <script>window.onload = function(){ window.print(); window.close(); }<\/script>
 </body></html>`);
   win.document.close();

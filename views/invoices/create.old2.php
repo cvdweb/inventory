@@ -283,26 +283,17 @@ include BASE_PATH . '/views/layouts/header.php';
           </button>
           <div id="cat_<?= $catKey ?>" style="display:none">
             <?php foreach ($catProds as $p):
-              $low    = ($p['stock'] ?? 0) < ($p['min_stock'] ?? 5);
-              $pJson  = json_encode([
-                'code'           => $p['code'],
-                'name'           => $p['name'],
-                'unit'           => $p['unit'],
-                'price_out'      => (float)($p['price_out'] ?? 0),
-                'stock'          => (float)($p['stock'] ?? 0),
-                'special_colors' => $p['special_colors'] ?? [],
+              $low = ($p['stock'] ?? 0) < ($p['min_stock'] ?? 5);
+              $pJson = json_encode([
+                'code'      => $p['code'],
+                'name'      => $p['name'],
+                'unit'      => $p['unit'],
+                'price_out' => (float)($p['price_out'] ?? 0),
+                'stock'     => (float)($p['stock'] ?? 0),
               ], JSON_UNESCAPED_UNICODE);
-              $hasColors = !empty($p['special_colors']);
             ?>
             <div class="cat-item" onclick='addItem(<?= $pJson ?>)'>
-              <div style="font-weight:600;font-size:13px;color:#111827">
-                <?= htmlspecialchars($p['name']) ?>
-                <?php if ($hasColors): ?>
-                <span style="background:#f3e8ff;color:#7c3aed;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:4px">
-                  <i class="bi bi-palette"></i> <?= count($p['special_colors']) ?> màu ĐB
-                </span>
-                <?php endif; ?>
-              </div>
+              <div style="font-weight:600;font-size:13px;color:#111827"><?= htmlspecialchars($p['name']) ?></div>
               <div class="d-flex justify-content-between mt-1">
                 <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#9ca3af"><?= htmlspecialchars($p['code']) ?></span>
                 <span style="font-size:11px;font-weight:700;color:<?= $low ? '#ef4444' : '#10b981' ?>">
@@ -524,50 +515,31 @@ function showColorPicker(p) {
   _colorPickerProduct = p;
   const basePrice = parseFloat(p.price_out) || 0;
 
-  // Tạo modal một lần
-  if (!document.getElementById('colorPickerModal')) {
-    const el = document.createElement('div');
-    el.id = 'colorPickerModal';
-    el.className = 'modal fade';
-    el.setAttribute('tabindex', '-1');
-    el.innerHTML = `
+  // Tạo modal động nếu chưa có
+  let modal = document.getElementById('colorPickerModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'colorPickerModal';
+    modal.className = 'modal fade';
+    modal.setAttribute('tabindex', '-1');
+    modal.innerHTML = `
       <div class="modal-dialog modal-sm">
         <div class="modal-content">
           <div class="modal-header py-2">
-            <h6 class="modal-title fw-700">
-              <i class="bi bi-palette me-2" style="color:#8b5cf6"></i>Chọn Màu
-            </h6>
+            <h6 class="modal-title fw-700"><i class="bi bi-palette me-2" style="color:#8b5cf6"></i>Chọn Màu Sơn</h6>
             <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body p-2" id="colorPickerBody"></div>
         </div>
       </div>`;
-    document.body.appendChild(el);
-    // Gán sự kiện click bằng delegation — tránh inline onclick
-    document.getElementById('colorPickerBody').addEventListener('click', function(e) {
-      const item = e.target.closest('[data-color-idx]');
-      if (!item) return;
-      const idx = parseInt(item.dataset.colorIdx);
-      const prod = _colorPickerProduct;
-      if (!prod) return;
-      bootstrap.Modal.getInstance(document.getElementById('colorPickerModal')).hide();
-      if (idx === -1) {
-        // Màu thường
-        _doAddItem(prod, '', 0);
-      } else {
-        const sc = prod.special_colors[idx];
-        if (!sc) return;
-        const label = sc.name + (sc.code ? ' (' + sc.code + ')' : '');
-        _doAddItem(prod, label, sc.surcharge);
-      }
-    });
+    document.body.appendChild(modal);
   }
 
-  // Render nội dung
-  let html = `
-    <div data-color-idx="-1"
-      style="padding:10px 12px;cursor:pointer;border-radius:6px;border:1.5px solid #e5e7eb;
-             margin-bottom:6px;transition:all .15s"
+  // Render danh sách lựa chọn
+  const rows = `
+    <!-- Màu thường -->
+    <div onclick="_doAddItem(_colorPickerProduct,'',0);bootstrap.Modal.getInstance(document.getElementById('colorPickerModal')).hide()"
+      style="padding:10px 12px;cursor:pointer;border-radius:6px;border:1.5px solid #e5e7eb;margin-bottom:6px;transition:all .15s"
       onmouseover="this.style.borderColor='#f59e0b';this.style.background='#fffbeb'"
       onmouseout="this.style.borderColor='#e5e7eb';this.style.background=''">
       <div style="font-weight:700;font-size:13.5px">Màu thường</div>
@@ -575,34 +547,28 @@ function showColorPicker(p) {
         Giá: <b style="color:#f59e0b">${fmtM(basePrice)}</b>
       </div>
     </div>
-    <div style="font-size:11px;font-weight:700;color:#7c3aed;
-                margin:10px 0 6px;padding:0 2px;border-top:1px dashed #e9d5ff;padding-top:8px">
+    <!-- Màu đặc biệt -->
+    <div style="font-size:11px;font-weight:700;color:#7c3aed;margin:8px 0 4px;padding:0 2px">
       <i class="bi bi-stars me-1"></i>MÀU ĐẶC BIỆT
-    </div>`;
-
-  p.special_colors.forEach((sc, idx) => {
-    const finalPrice = basePrice + (parseFloat(sc.surcharge) || 0);
-    html += `
-      <div data-color-idx="${idx}"
-        style="padding:10px 12px;cursor:pointer;border-radius:6px;border:1.5px solid #e9d5ff;
-               margin-bottom:6px;background:#faf5ff;transition:all .15s"
+    </div>
+    ${p.special_colors.map(sc => {
+      const final = basePrice + (parseFloat(sc.surcharge)||0);
+      return `<div onclick="_doAddItem(_colorPickerProduct,'${esc(sc.name)+(sc.code?(' ('+esc(sc.code)+')'):'')}',${ sc.surcharge });bootstrap.Modal.getInstance(document.getElementById('colorPickerModal')).hide()"
+        style="padding:10px 12px;cursor:pointer;border-radius:6px;border:1.5px solid #e9d5ff;margin-bottom:6px;background:#faf5ff;transition:all .15s"
         onmouseover="this.style.borderColor='#8b5cf6';this.style.background='#f3e8ff'"
         onmouseout="this.style.borderColor='#e9d5ff';this.style.background='#faf5ff'">
         <div style="font-weight:700;font-size:13.5px;color:#5b21b6">
-          ${esc(sc.name)}
-          ${sc.code ? `<span style="font-family:monospace;font-size:11px;color:#9ca3af;
-            font-weight:400;margin-left:6px">${esc(sc.code)}</span>` : ''}
+          ${esc(sc.name)}${sc.code ? `<span style="font-family:monospace;font-size:11px;color:#9ca3af;font-weight:400;margin-left:6px">${esc(sc.code)}</span>` : ''}
         </div>
         <div style="font-size:12px;color:#6b7280;margin-top:2px">
-          Phụ thu: <span style="color:#7c3aed;font-weight:700">+${fmtM(sc.surcharge)}</span>
-          &nbsp;→&nbsp;
-          <b style="color:#7c3aed;font-size:13px">${fmtM(finalPrice)}</b>
+          Phụ thu: +${fmtM(sc.surcharge)} &nbsp;→&nbsp;
+          <b style="color:#7c3aed">${fmtM(final)}</b>
         </div>
       </div>`;
-  });
+    }).join('')}`;
 
-  document.getElementById('colorPickerBody').innerHTML = html;
-  bootstrap.Modal.getOrCreateInstance(document.getElementById('colorPickerModal')).show();
+  document.getElementById('colorPickerBody').innerHTML = rows;
+  bootstrap.Modal.getOrCreateInstance(modal).show();
 }
 
 function flashRow(code) {

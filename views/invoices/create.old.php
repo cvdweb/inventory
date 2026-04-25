@@ -158,7 +158,6 @@ include BASE_PATH . '/views/layouts/header.php';
           <span id="summCustomer"><i class="bi bi-person me-1"></i>Khách lẻ</span>
           <span id="summPayment"><i class="bi bi-cash me-1"></i>Tiền mặt</span>
           <span id="summDelivery" style="display:none"><i class="bi bi-truck me-1 text-warning"></i><span id="summDeliveryDate"></span></span>
-          <span id="summShipping" style="display:none"><i class="bi bi-currency-dollar me-1 text-success"></i><span id="summShippingAmt"></span></span>
         </div>
         <i class="bi bi-chevron-down acc-icon ms-auto" style="color:#9ca3af"></i>
       </div>
@@ -199,29 +198,24 @@ include BASE_PATH . '/views/layouts/header.php';
               class="form-control form-control-sm" min="<?= date('Y-m-d') ?>"
               onchange="onDeliveryDateChange(this.value)">
           </div>
+          <div class="col-md-2">
+            <label class="form-label" style="font-size:11.5px">Giá vận chuyển</label>
+            <input type="number" name="shipping_fee" id="inpShippingFee"
+              class="form-control form-control-sm" value="0" min="0" step="1000"
+              placeholder="0 ₫"
+              oninput="updateTotals()">
+          </div>
           <div class="col-md-3">
             <label class="form-label" style="font-size:11.5px">Địa chỉ giao hàng</label>
             <input type="text" name="address" class="form-control form-control-sm"
               placeholder="Để trống = lấy tại quầy">
           </div>
-          <div class="col-md-2">
+          <div class="col-md-3">
             <label class="form-label" style="font-size:11.5px">Ghi chú cho tài xế</label>
             <input type="text" name="delivery_note" class="form-control form-control-sm"
-              placeholder="VD: Gọi trước 30 phút...">
+              placeholder="VD: Gọi trước 30 phút, giao tầng 2...">
           </div>
-          <!-- Phí vận chuyển — hiện khi có ngày giao -->
-          <div class="col-md-2" id="shippingWrap" style="display:none">
-            <label class="form-label" style="font-size:11.5px">
-              <i class="bi bi-cash me-1 text-success"></i>Phí vận chuyển (₫)
-            </label>
-            <input type="number" name="shipping_fee" id="inpShippingFee"
-              class="form-control form-control-sm" min="0" step="1000" value="0"
-              onfocus="this.select()" oninput="updateTotals()">
-          </div>
-          <div class="col-md-3 d-flex align-items-end gap-2">
-            <!-- Checkbox giao hàng nhanh (khi chưa chọn ngày) -->
-            <div id="shippingCheckWrap" class="d-flex align-items-center gap-2 mb-1" style="display:none!important">
-            </div>
+          <div class="col-md-3 d-flex align-items-end">
             <button type="button" class="btn btn-sm btn-outline-secondary w-100"
               onclick="toggleAccordion()">
               <i class="bi bi-chevron-up me-1"></i>Thu gọn
@@ -283,26 +277,17 @@ include BASE_PATH . '/views/layouts/header.php';
           </button>
           <div id="cat_<?= $catKey ?>" style="display:none">
             <?php foreach ($catProds as $p):
-              $low    = ($p['stock'] ?? 0) < ($p['min_stock'] ?? 5);
-              $pJson  = json_encode([
-                'code'           => $p['code'],
-                'name'           => $p['name'],
-                'unit'           => $p['unit'],
-                'price_out'      => (float)($p['price_out'] ?? 0),
-                'stock'          => (float)($p['stock'] ?? 0),
-                'special_colors' => $p['special_colors'] ?? [],
+              $low = ($p['stock'] ?? 0) < ($p['min_stock'] ?? 5);
+              $pJson = json_encode([
+                'code'      => $p['code'],
+                'name'      => $p['name'],
+                'unit'      => $p['unit'],
+                'price_out' => (float)($p['price_out'] ?? 0),
+                'stock'     => (float)($p['stock'] ?? 0),
               ], JSON_UNESCAPED_UNICODE);
-              $hasColors = !empty($p['special_colors']);
             ?>
             <div class="cat-item" onclick='addItem(<?= $pJson ?>)'>
-              <div style="font-weight:600;font-size:13px;color:#111827">
-                <?= htmlspecialchars($p['name']) ?>
-                <?php if ($hasColors): ?>
-                <span style="background:#f3e8ff;color:#7c3aed;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:4px">
-                  <i class="bi bi-palette"></i> <?= count($p['special_colors']) ?> màu ĐB
-                </span>
-                <?php endif; ?>
-              </div>
+              <div style="font-weight:600;font-size:13px;color:#111827"><?= htmlspecialchars($p['name']) ?></div>
               <div class="d-flex justify-content-between mt-1">
                 <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#9ca3af"><?= htmlspecialchars($p['code']) ?></span>
                 <span style="font-size:11px;font-weight:700;color:<?= $low ? '#ef4444' : '#10b981' ?>">
@@ -355,20 +340,13 @@ include BASE_PATH . '/views/layouts/header.php';
 
       <!-- Footer: tổng + nút xuất -->
       <div class="pos-right-footer">
-        <div style="padding:10px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
           <div style="font-size:12.5px;color:#6b7280">
             <span id="itemCountFt">0</span> sản phẩm
           </div>
-          <div class="d-flex align-items-center gap-3 ms-auto">
-            <!-- Breakdown -->
-            <div class="text-end" style="line-height:1.6">
-              <div style="font-size:12px;color:#9ca3af">
-                Hàng hóa: <span id="subtotalDisplay" style="color:#374151;font-weight:600">0 ₫</span>
-              </div>
-              <div id="shippingRow" style="font-size:12px;color:#9ca3af;display:none">
-                Phí vận chuyển: <span id="shippingDisplay" style="color:#10b981;font-weight:600">0 ₫</span>
-              </div>
-              <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Tổng cộng</div>
+          <div class="d-flex align-items-center gap-3">
+            <div class="text-end">
+              <div style="font-size:11px;color:#9ca3af">TỔNG CỘNG</div>
               <div id="invoiceTotal" style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:#f59e0b">0 ₫</div>
             </div>
             <button type="submit" class="btn btn-primary btn-lg px-4" style="white-space:nowrap">
@@ -407,19 +385,14 @@ function updateSummary() {
 }
 
 function onDeliveryDateChange(val) {
-  const el       = document.getElementById('summDelivery');
-  const txt      = document.getElementById('summDeliveryDate');
-  const shipWrap = document.getElementById('shippingWrap');
+  const el  = document.getElementById('summDelivery');
+  const txt = document.getElementById('summDeliveryDate');
   if (val) {
     const d = new Date(val + 'T00:00:00');
     txt.textContent = 'Giao ' + d.toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'});
     el.style.display = '';
-    shipWrap.style.display = '';   // Hiện ô phí vận chuyển
   } else {
     el.style.display = 'none';
-    shipWrap.style.display = 'none';
-    document.getElementById('inpShippingFee').value = '0';
-    updateTotals();
   }
 }
 
@@ -449,15 +422,10 @@ function doSearch(val) {
   }
   dd.innerHTML = results.map(p => {
     const low = p.stock < (p.min_stock||5);
-    const hasColor = p.special_colors && p.special_colors.length > 0;
     return `<div onclick='addItem(${JSON.stringify(p)})'
       style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f3f4f6;transition:background .1s"
       onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background=''">
-      <div style="font-weight:600;font-size:13.5px;color:#111">
-        ${esc(p.name)}
-        ${hasColor ? `<span style="background:#f3e8ff;color:#7c3aed;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:6px">
-          <i class="bi bi-palette"></i> ${p.special_colors.length} màu ĐB</span>` : ''}
-      </div>
+      <div style="font-weight:600;font-size:13.5px;color:#111">${esc(p.name)}</div>
       <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap;align-items:center">
         <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9ca3af">${esc(p.code)}</span>
         <span style="font-size:11px;font-weight:700;color:${low?'#ef4444':'#10b981'}">
@@ -479,156 +447,34 @@ function addItem(p) {
   document.getElementById('productDropdown').style.display = 'none';
   document.getElementById('productSearch').value = '';
 
-  // Nếu có màu đặc biệt → hiện modal chọn màu
-  if (p.special_colors && p.special_colors.length > 0) {
-    showColorPicker(p);
-    return;
-  }
-  _doAddItem(p, '', 0);
-}
-
-// Thêm thực sự vào giỏ (sau khi chọn màu hoặc không có màu)
-function _doAddItem(p, colorName, surcharge) {
-  // Key phân biệt: cùng SP nhưng khác màu = dòng riêng
-  const key = colorName ? (p.code + '__' + colorName.replace(/\s+/g,'_')) : p.code;
-  const basePrice  = parseFloat(p.price_out) || 0;
-  const finalPrice = basePrice + (parseFloat(surcharge) || 0);
-  const displayName = colorName ? `${p.name} — ${colorName}` : p.name;
-
-  const ex = invoiceItems.find(i => i.code === key);
+  const ex = invoiceItems.find(i => i.code === p.code);
   if (ex) {
     ex.qty += 1;
     ex.line_total = ex.qty * ex.price_out;
+    renderItems();
+    flashRow(p.code);
   } else {
     invoiceItems.push({
-      code:         key,
-      product_code: p.code,          // mã SP gốc để trừ tồn kho
-      name:         displayName,
-      unit:         p.unit,
-      qty:          1,
-      price_out:    finalPrice,
-      line_total:   finalPrice,
-      stock:        parseFloat(p.stock) || 0,
-      color_name:   colorName || '',
-      surcharge:    parseFloat(surcharge) || 0,
+      code: p.code, name: p.name, unit: p.unit,
+      qty: 1,
+      price_out: parseFloat(p.price_out)||0,
+      line_total: parseFloat(p.price_out)||0,
+      stock: parseFloat(p.stock)||0,
     });
+    renderItems();
+    flashRow(p.code);
   }
-  renderItems();
-  flashRow(key);
-}
-
-// ── Modal chọn màu đặc biệt ───────────────────────────────────
-let _colorPickerProduct = null;
-
-function showColorPicker(p) {
-  _colorPickerProduct = p;
-  const basePrice = parseFloat(p.price_out) || 0;
-
-  // Tạo modal một lần
-  if (!document.getElementById('colorPickerModal')) {
-    const el = document.createElement('div');
-    el.id = 'colorPickerModal';
-    el.className = 'modal fade';
-    el.setAttribute('tabindex', '-1');
-    el.innerHTML = `
-      <div class="modal-dialog modal-sm">
-        <div class="modal-content">
-          <div class="modal-header py-2">
-            <h6 class="modal-title fw-700">
-              <i class="bi bi-palette me-2" style="color:#8b5cf6"></i>Chọn Màu
-            </h6>
-            <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body p-2" id="colorPickerBody"></div>
-        </div>
-      </div>`;
-    document.body.appendChild(el);
-    // Gán sự kiện click bằng delegation — tránh inline onclick
-    document.getElementById('colorPickerBody').addEventListener('click', function(e) {
-      const item = e.target.closest('[data-color-idx]');
-      if (!item) return;
-      const idx = parseInt(item.dataset.colorIdx);
-      const prod = _colorPickerProduct;
-      if (!prod) return;
-      bootstrap.Modal.getInstance(document.getElementById('colorPickerModal')).hide();
-      if (idx === -1) {
-        // Màu thường
-        _doAddItem(prod, '', 0);
-      } else {
-        const sc = prod.special_colors[idx];
-        if (!sc) return;
-        const label = sc.name + (sc.code ? ' (' + sc.code + ')' : '');
-        _doAddItem(prod, label, sc.surcharge);
-      }
-    });
-  }
-
-  // Render nội dung
-  let html = `
-    <div data-color-idx="-1"
-      style="padding:10px 12px;cursor:pointer;border-radius:6px;border:1.5px solid #e5e7eb;
-             margin-bottom:6px;transition:all .15s"
-      onmouseover="this.style.borderColor='#f59e0b';this.style.background='#fffbeb'"
-      onmouseout="this.style.borderColor='#e5e7eb';this.style.background=''">
-      <div style="font-weight:700;font-size:13.5px">Màu thường</div>
-      <div style="font-size:12px;color:#6b7280;margin-top:2px">
-        Giá: <b style="color:#f59e0b">${fmtM(basePrice)}</b>
-      </div>
-    </div>
-    <div style="font-size:11px;font-weight:700;color:#7c3aed;
-                margin:10px 0 6px;padding:0 2px;border-top:1px dashed #e9d5ff;padding-top:8px">
-      <i class="bi bi-stars me-1"></i>MÀU ĐẶC BIỆT
-    </div>`;
-
-  p.special_colors.forEach((sc, idx) => {
-    const finalPrice = basePrice + (parseFloat(sc.surcharge) || 0);
-    html += `
-      <div data-color-idx="${idx}"
-        style="padding:10px 12px;cursor:pointer;border-radius:6px;border:1.5px solid #e9d5ff;
-               margin-bottom:6px;background:#faf5ff;transition:all .15s"
-        onmouseover="this.style.borderColor='#8b5cf6';this.style.background='#f3e8ff'"
-        onmouseout="this.style.borderColor='#e9d5ff';this.style.background='#faf5ff'">
-        <div style="font-weight:700;font-size:13.5px;color:#5b21b6">
-          ${esc(sc.name)}
-          ${sc.code ? `<span style="font-family:monospace;font-size:11px;color:#9ca3af;
-            font-weight:400;margin-left:6px">${esc(sc.code)}</span>` : ''}
-        </div>
-        <div style="font-size:12px;color:#6b7280;margin-top:2px">
-          Phụ thu: <span style="color:#7c3aed;font-weight:700">+${fmtM(sc.surcharge)}</span>
-          &nbsp;→&nbsp;
-          <b style="color:#7c3aed;font-size:13px">${fmtM(finalPrice)}</b>
-        </div>
-      </div>`;
-  });
-
-  document.getElementById('colorPickerBody').innerHTML = html;
-  bootstrap.Modal.getOrCreateInstance(document.getElementById('colorPickerModal')).show();
 }
 
 function flashRow(code) {
+  // Scroll xuống cuối DS để thấy item vừa thêm
   const container = document.getElementById('invoiceItems');
   if (container) container.scrollTop = container.scrollHeight;
+  // Flash highlight
   setTimeout(() => {
     const row = document.getElementById('row_' + code);
     if (row) { row.classList.add('flash'); setTimeout(()=>row.classList.remove('flash'),600); }
   }, 30);
-}
-
-function syncJson() {
-  const el = document.getElementById('invoiceItemsJson');
-  if (el) {
-    // Gửi product_code gốc (không phải key có màu) để controller trừ tồn kho đúng
-    const data = invoiceItems.map(i => ({
-      code:      i.product_code || i.code,  // mã SP gốc
-      name:      i.name,
-      unit:      i.unit,
-      qty:       i.qty,
-      price_out: i.price_out,
-      line_total:i.line_total,
-      color_name:i.color_name || '',
-    }));
-    el.value = JSON.stringify(data);
-  }
 }
 
 // ── Xóa item ─────────────────────────────────────────────────
@@ -685,17 +531,9 @@ function renderItems() {
   container.innerHTML = invoiceItems.map(item => `
     <div class="inv-row" id="row_${esc(item.code)}">
       <div>
-        <div style="font-weight:600;font-size:13.5px;color:#111;line-height:1.3">
-          ${item.color_name
-            ? `<span>${esc(item.name.split(' — ')[0])}</span>
-               <span style="display:inline-block;margin-left:6px;background:#f3e8ff;color:#7c3aed;border-radius:4px;padding:1px 7px;font-size:11px;font-weight:700">
-                 <i class="bi bi-palette" style="font-size:10px"></i> ${esc(item.color_name)}
-               </span>`
-            : esc(item.name)
-          }
-        </div>
+        <div style="font-weight:600;font-size:13.5px;color:#111;line-height:1.3">${esc(item.name)}</div>
         <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#9ca3af">
-          ${esc(item.product_code || item.code)}
+          ${esc(item.code)}
           <span style="margin-left:6px;color:${item.stock<(item.min_stock||5)?'#ef4444':'#10b981'};font-weight:700">
             Tồn: ${fmt(item.stock)} ${esc(item.unit)}
           </span>
@@ -730,37 +568,16 @@ function renderItems() {
 }
 
 function updateTotals() {
-  const subtotal = invoiceItems.reduce((s,i) => s + i.line_total, 0);
-  const shipping = parseFloat(document.getElementById('inpShippingFee')?.value || 0) || 0;
-  const grand    = subtotal + shipping;
-
-  // Subtotal
-  const subEl = document.getElementById('subtotalDisplay');
-  if (subEl) subEl.textContent = fmtM(subtotal);
-
-  // Shipping row
-  const shipRow = document.getElementById('shippingRow');
-  const shipEl  = document.getElementById('shippingDisplay');
-  if (shipRow) shipRow.style.display = shipping > 0 ? '' : 'none';
-  if (shipEl)  shipEl.textContent = fmtM(shipping);
-
-  // Grand total
+  const total = invoiceItems.reduce((s,i) => s + i.line_total, 0);
+  const shippingFee = parseFloat(document.getElementById('inpShippingFee')?.value || 0);
+  const finalTotal = total + shippingFee;
   const el = document.getElementById('invoiceTotal');
-  if (el) el.textContent = fmtM(grand);
-
-  // Summary badge
-  const summShip = document.getElementById('summShipping');
-  const summAmt  = document.getElementById('summShippingAmt');
-  if (summShip && summAmt) {
-    if (shipping > 0) {
-      summAmt.textContent = 'Ship: ' + fmtM(shipping);
-      summShip.style.display = '';
-    } else {
-      summShip.style.display = 'none';
-    }
-  }
-
+  if (el) el.textContent = fmtM(finalTotal);
   syncJson();
+}
+function syncJson() {
+  const el = document.getElementById('invoiceItemsJson');
+  if (el) el.value = JSON.stringify(invoiceItems);
 }
 function invoiceSubmit(e) {
   if (!invoiceItems.length) {

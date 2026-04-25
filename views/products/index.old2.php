@@ -22,16 +22,11 @@ include BASE_PATH . '/views/layouts/header.php';
     <h2><i class="bi bi-box2-fill me-2 text-<?= $branchInfo['color'] ?>"></i><?= htmlspecialchars($branchInfo['name']) ?></h2>
     <p>Quản lý sản phẩm — <?= count($products) ?> sản phẩm</p>
   </div>
-  <div class="d-flex gap-2">
-    <button class="btn btn-outline-secondary" onclick="printPriceList()">
-      <i class="bi bi-printer me-1"></i>In Bảng Giá
-    </button>
-    <?php if ($canManage): ?>
-    <button class="btn btn-primary" onclick="openAddModal()">
-      <i class="bi bi-plus-lg me-1"></i>Thêm Sản Phẩm
-    </button>
-    <?php endif; ?>
-  </div>
+  <?php if ($canManage): ?>
+  <button class="btn btn-primary" onclick="openAddModal()">
+    <i class="bi bi-plus-lg me-1"></i>Thêm Sản Phẩm
+  </button>
+  <?php endif; ?>
 </div>
 
 <!-- Filter bar -->
@@ -189,12 +184,12 @@ include BASE_PATH . '/views/layouts/header.php';
             <div class="col-md-4">
               <label class="form-label">Giá nhập (₫)</label>
               <input type="number" name="price_in" id="pPriceIn" class="form-control" onfocus="this.select()"
-                value="0" min="0" step="10">
+                value="0" min="0" step="1000">
             </div>
             <div class="col-md-4">
               <label class="form-label">Giá bán (₫) *</label>
               <input type="number" name="price_out" id="pPriceOut" class="form-control" onfocus="this.select()"
-                value="0" min="0" step="10" required>
+                value="0" min="0" step="1000" required>
             </div>
             <div class="col-md-4">
               <label class="form-label">Tồn kho ban đầu</label>
@@ -238,182 +233,7 @@ include BASE_PATH . '/views/layouts/header.php';
 </div>
 
 <script>
-// ── In Bảng Giá ───────────────────────────────────────────────
-function printPriceList() {
-  const BIZ = <?= json_encode([
-    'name'       => BUSINESS['name'],
-    'address'    => BUSINESS['address'],
-    'phone'      => BUSINESS['phone'],
-    'slogan'     => BUSINESS['slogan'] ?? '',
-    'branch'     => $branchInfo['name'],
-    'date'       => date('d/m/Y'),
-  ], JSON_UNESCAPED_UNICODE) ?>;
-
-  // Dữ liệu sản phẩm nhóm theo category
-  const GROUPS = <?= (function() use ($categoriesRaw, $reqBranch) {
-    $groups = [];
-    foreach ($categoriesRaw as $cat) {
-        $file  = DATA_PATH . "/{$reqBranch}/" . $cat['file'];
-        $prods = readJson($file);
-        if (empty($prods)) continue;
-        $groups[] = [
-            'name'     => $cat['name'],
-            'products' => array_values($prods),
-        ];
-    }
-    return json_encode($groups, JSON_UNESCAPED_UNICODE);
-  })() ?>;
-
-  // Sinh HTML bảng từng nhóm
-  let tablesHtml = '';
-  GROUPS.forEach(group => {
-    if (!group.products.length) return;
-    const rows = group.products.map((p, idx) => {
-      const hasSpecial = p.special_colors && p.special_colors.length > 0;
-      // Dòng sản phẩm gốc
-      let html = `<tr>
-        <td style="text-align:center;color:#777">${idx+1}</td>
-        <td style="font-family:'Courier New',monospace;font-size:10.5pt">${_esc(p.code||'')}</td>
-        <td style="font-weight:bold">${_esc(p.name||'')}${hasSpecial?'<span style="font-size:9.5pt;color:#7c3aed;font-weight:normal;margin-left:6px">(màu thường)</span>':''}</td>
-        <td style="text-align:center">${_esc(p.unit||'')}</td>
-        <td style="text-align:right;font-weight:bold;font-size:13pt">${_fmtPrice(p.price_out)}</td>
-        <td></td>
-      </tr>`;
-      // Dòng màu đặc biệt
-      if (hasSpecial) {
-        p.special_colors.forEach(sc => {
-          const finalPrice = (parseFloat(p.price_out)||0) + (parseFloat(sc.surcharge)||0);
-          html += `<tr style="background:#faf5ff">
-            <td></td>
-            <td style="font-family:'Courier New',monospace;font-size:10pt;color:#7c3aed;padding-left:12pt">
-              ${sc.code ? _esc(sc.code) : ''}
-            </td>
-            <td style="padding-left:20pt;color:#5b21b6">
-              <span style="margin-right:4pt">↳</span>${_esc(sc.name)}
-              <span style="font-size:9.5pt;color:#9ca3af;margin-left:6px">+ ${_fmtPrice(sc.surcharge)}</span>
-            </td>
-            <td style="text-align:center;color:#777">${_esc(p.unit||'')}</td>
-            <td style="text-align:right;font-weight:bold;font-size:13pt;color:#7c3aed">${_fmtPrice(finalPrice)}</td>
-            <td></td>
-          </tr>`;
-        });
-      }
-      return html;
-    }).join('');
-
-    tablesHtml += `
-      <div class="group-block">
-        <div class="group-title">${_esc(group.name)}</div>
-        <table>
-          <thead><tr>
-            <th style="width:32px;text-align:center">STT</th>
-            <th style="width:90px">Mã SP</th>
-            <th>Tên sản phẩm</th>
-            <th style="width:55px;text-align:center">ĐVT</th>
-            <th style="width:120px;text-align:right">Giá bán</th>
-            <th style="width:80px;text-align:center">Ghi chú</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
-  });
-
-  const win = window.open('', '_blank', 'width=900,height=750');
-  win.document.write(`<!DOCTYPE html>
-<html lang="vi"><head>
-<meta charset="UTF-8">
-<title>Bảng Giá — ${_esc(BIZ.branch)}</title>
-<style>
-  @page { size: A4; margin: 12mm 16mm; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Times New Roman', serif; font-size: 12.5pt; color: #000; }
-
-  /* Header */
-  .biz-header { text-align: center; padding-bottom: 4mm; border-bottom: 2.5px solid #000; margin-bottom: 4mm; }
-  .biz-name   { font-size: 17pt; font-weight: bold; letter-spacing: .5px; }
-  .biz-branch { font-size: 11pt; color: #555; margin-top: 1.5mm; }
-  .biz-contact{ font-size: 12pt; color: #222; margin-top: 1.5mm; font-weight: bold; }
-  .biz-slogan { font-size: 10pt; color: #777; font-style: italic; margin-top: 1mm; }
-
-  /* Tiêu đề bảng giá */
-  .doc-title  { text-align: center; font-size: 18pt; font-weight: bold;
-    letter-spacing: 3px; text-transform: uppercase; margin: 4mm 0 1mm; }
-  .doc-date   { text-align: center; font-size: 10pt; color: #666; margin-bottom: 5mm; }
-
-  /* Nhóm hàng */
-  .group-block { margin-bottom: 6mm; break-inside: avoid; }
-  .group-title {
-    font-size: 13pt; font-weight: bold;
-    background: #1e293b; color: #fff;
-    padding: 2.5mm 4mm; border-radius: 1.5mm;
-    margin-bottom: 0;
-    letter-spacing: .5px;
-  }
-
-  /* Bảng */
-  table { width: 100%; border-collapse: collapse; font-size: 12pt; }
-  thead tr { background: #f1f5f9; }
-  th { border: 1px solid #94a3b8; padding: 2mm 3mm; font-weight: bold; font-size: 11pt; }
-  td { border: 1px solid #cbd5e1; padding: 2mm 3mm; vertical-align: middle; }
-  tr:nth-child(even):not([style]) { background: #f8fafc; }
-
-  /* Footer */
-  .footer {
-    margin-top: 6mm;
-    padding-top: 3mm;
-    border-top: 1px dashed #aaa;
-    font-size: 10pt;
-    color: #666;
-    display: flex;
-    justify-content: space-between;
-  }
-  .note-box {
-    margin-top: 4mm;
-    padding: 3mm 4mm;
-    border: 1px solid #e5e7eb;
-    border-radius: 2mm;
-    font-size: 10.5pt;
-    color: #555;
-    background: #fafafa;
-  }
-</style>
-</head><body>
-
-<!-- Header doanh nghiệp -->
-<div class="biz-header">
-  <div class="biz-name">${_esc(BIZ.name)}</div>
-  <div class="biz-branch">${_esc(BIZ.branch)}</div>
-  <div class="biz-contact">📍 ${_esc(BIZ.address)} &nbsp;|&nbsp; 📞 ${_esc(BIZ.phone)}</div>
-  ${BIZ.slogan ? `<div class="biz-slogan">"${_esc(BIZ.slogan)}"</div>` : ''}
-</div>
-
-<!-- Tiêu đề -->
-<div class="doc-title">Bảng Giá Sản Phẩm</div>
-<div class="doc-date">Áp dụng từ ngày ${_esc(BIZ.date)} &nbsp;·&nbsp; Giá có thể thay đổi, vui lòng liên hệ để xác nhận</div>
-
-<!-- Bảng giá từng nhóm -->
-${tablesHtml}
-
-<!-- Ghi chú -->
-<div class="note-box">
-  <b>Ghi chú:</b>
-  Giá trên là giá bán lẻ, chưa bao gồm VAT.
-  Màu đặc biệt (nền tím) có phụ thu thêm theo từng loại màu.
-  Liên hệ cửa hàng để biết thêm chi tiết và giá sỉ.
-</div>
-
-<div class="footer">
-  <span>In lúc: ${new Date().toLocaleString('vi-VN')}</span>
-  <span>${_esc(BIZ.name)} — ${_esc(BIZ.phone)}</span>
-</div>
-
-<script>window.onload = function(){ window.print(); window.close(); }<\/script>
-</body></html>`);
-  win.document.close();
-}
-
-function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function _fmtPrice(n) { return new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND'}).format(Number(n)||0); }
+// ── Quản lý màu đặc biệt ─────────────────────────────────────
 let specialColors = [];
 
 function renderColors() {
@@ -444,7 +264,7 @@ function renderColors() {
       <div class="input-group input-group-sm" style="width:160px;flex-shrink:0">
         <span class="input-group-text" style="font-size:11px;white-space:nowrap">+ Phụ thu</span>
         <input type="number" class="form-control" style="text-align:right"
-          min="0" step="50" value="${c.surcharge||0}"
+          min="0" step="1000" value="${c.surcharge||0}"
           onfocus="this.select()"
           oninput="updateColor(${i},'surcharge',this.value)">
         <span class="input-group-text" style="font-size:11px">₫</span>

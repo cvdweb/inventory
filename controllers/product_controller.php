@@ -3,6 +3,23 @@
 // PRODUCT CONTROLLER
 // ============================================================
 
+function _parseSpecialColors($raw): array
+{
+    if (is_array($raw)) $data = $raw;
+    else $data = json_decode($raw ?: '[]', true) ?: [];
+    $result = [];
+    foreach ($data as $c) {
+        $name = trim($c['name'] ?? '');
+        if (!$name) continue;
+        $result[] = [
+            'name'      => $name,
+            'code'      => trim($c['code'] ?? ''),
+            'surcharge' => max(0, floatval($c['surcharge'] ?? 0)),
+        ];
+    }
+    return $result;
+}
+
 function productList(string $branch, string $category = '', string $search = ''): array
 {
     if ($search) return searchProducts($branch, $search);
@@ -47,17 +64,18 @@ function productSave(string $branch, string $category, array $data): array
         }
 
         $newProduct = [
-            'id'         => uniqid('P'),
-            'code'       => strtoupper($code),
-            'name'       => $name,
-            'unit'       => $data['unit'] ?? 'cái',
-            'price_in'   => floatval($data['price_in'] ?? 0),
-            'price_out'  => floatval($data['price_out'] ?? 0),
-            'stock'      => floatval($data['stock'] ?? 0),
-            'min_stock'  => floatval($data['min_stock'] ?? 5),
-            'branch_id'  => $branch,
-            'created_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s'),
+            'id'             => uniqid('P'),
+            'code'           => strtoupper($code),
+            'name'           => $name,
+            'unit'           => $data['unit'] ?? 'cái',
+            'price_in'       => floatval($data['price_in'] ?? 0),
+            'price_out'      => floatval($data['price_out'] ?? 0),
+            'stock'          => floatval($data['stock'] ?? 0),
+            'min_stock'      => floatval($data['min_stock'] ?? 5),
+            'special_colors' => _parseSpecialColors($data['special_colors'] ?? '[]'),
+            'branch_id'      => $branch,
+            'created_at'     => date('Y-m-d H:i:s'),
+            'updated_at'     => date('Y-m-d H:i:s'),
         ];
         $products[] = $newProduct;
 
@@ -68,13 +86,14 @@ function productSave(string $branch, string $category, array $data): array
             if ($p['id'] === $data['id']) {
                 // Chỉ cập nhật các trường cho phép sửa
                 // Tồn kho KHÔNG được sửa trực tiếp (phải qua nhập/xuất hàng)
-                $p['code']       = strtoupper($code);
-                $p['name']       = $name;
-                $p['unit']       = $data['unit'] ?? $p['unit'];
-                $p['price_in']   = floatval($data['price_in'] ?? $p['price_in']);
-                $p['price_out']  = floatval($data['price_out'] ?? $p['price_out']);
-                $p['min_stock']  = floatval($data['min_stock'] ?? $p['min_stock']);
-                $p['updated_at'] = date('Y-m-d H:i:s');
+                $p['code']            = strtoupper($code);
+                $p['name']            = $name;
+                $p['unit']            = $data['unit'] ?? $p['unit'];
+                $p['price_in']        = floatval($data['price_in'] ?? $p['price_in']);
+                $p['price_out']       = floatval($data['price_out'] ?? $p['price_out']);
+                $p['min_stock']       = floatval($data['min_stock'] ?? $p['min_stock']);
+                $p['special_colors']  = _parseSpecialColors($data['special_colors'] ?? '[]');
+                $p['updated_at']      = date('Y-m-d H:i:s');
                 // stock giữ nguyên — không ghi đè
                 $found = true;
                 break;

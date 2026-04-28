@@ -189,13 +189,12 @@ include BASE_PATH . '/views/layouts/header.php';
             <div class="col-md-4">
               <label class="form-label">Giá nhập (₫)</label>
               <input type="number" name="price_in" id="pPriceIn" class="form-control" onfocus="this.select()"
-                value="0" min="0" step="1000">
+                value="0" min="0" step="10">
             </div>
             <div class="col-md-4">
               <label class="form-label">Giá bán (₫) *</label>
               <input type="number" name="price_out" id="pPriceOut" class="form-control" onfocus="this.select()"
-                value="0" min="0" step="1000" required
-                oninput="recalcAllSurcharges()">
+                value="0" min="0" step="10" required>
             </div>
             <div class="col-md-4">
               <label class="form-label">Tồn kho ban đầu</label>
@@ -432,124 +431,40 @@ function renderColors() {
   empty.style.display = 'none';
   hidden.value = JSON.stringify(specialColors);
 
-  // Lấy giá bán hiện tại để tính %
-  const basePrice = parseFloat(document.getElementById('pPriceOut')?.value || 0) || 0;
-
-  container.innerHTML = specialColors.map((c, i) => {
-    const surchargeType = c.surcharge_type || 'fixed'; // 'fixed' | 'percent'
-    const pctVal  = c.surcharge_pct || 0;
-    const fixVal  = c.surcharge     || 0;
-    // Giá hiển thị tính toán
-    const computed = surchargeType === 'percent'
-      ? Math.round(basePrice * pctVal / 100)
-      : fixVal;
-    const finalPrice = basePrice + computed;
-
-    return `
+  container.innerHTML = specialColors.map((c, i) => `
     <div class="d-flex gap-2 align-items-center mb-2" id="colorRow_${i}">
-      <!-- Tên màu -->
       <input type="text" class="form-control form-control-sm" style="flex:2"
-        placeholder="Tên màu (VD: Đỏ đậm...)"
+        placeholder="Tên màu (VD: Đỏ đậm, Vàng kim...)"
         value="${esc(c.name)}"
         oninput="updateColor(${i},'name',this.value)">
-      <!-- Mã màu -->
       <input type="text" class="form-control form-control-sm" style="flex:1;font-family:monospace"
-        placeholder="Mã màu"
+        placeholder="Mã (tuỳ chọn)"
         value="${esc(c.code||'')}"
         oninput="updateColor(${i},'code',this.value)">
-      <!-- Loại phụ thu -->
-      <select class="form-select form-select-sm" style="width:70px;flex-shrink:0"
-        onchange="updateColor(${i},'surcharge_type',this.value);renderColors()">
-        <option value="fixed"   ${surchargeType==='fixed'  ?'selected':''}>₫</option>
-        <option value="percent" ${surchargeType==='percent'?'selected':''}>%</option>
-      </select>
-      <!-- Giá trị phụ thu -->
-      ${surchargeType === 'percent' ? `
-      <div class="input-group input-group-sm" style="width:130px;flex-shrink:0">
+      <div class="input-group input-group-sm" style="width:160px;flex-shrink:0">
+        <span class="input-group-text" style="font-size:11px;white-space:nowrap">+ Phụ thu</span>
         <input type="number" class="form-control" style="text-align:right"
-          min="0" max="100" step="1" value="${pctVal}"
-          onfocus="this.select()"
-          oninput="updateColor(${i},'surcharge_pct',this.value);recalcSurcharge(${i})">
-        <span class="input-group-text">%</span>
-      </div>` : `
-      <div class="input-group input-group-sm" style="width:130px;flex-shrink:0">
-        <input type="number" class="form-control" style="text-align:right"
-          min="0" step="1000" value="${fixVal}"
+          min="0" step="50" value="${c.surcharge||0}"
           onfocus="this.select()"
           oninput="updateColor(${i},'surcharge',this.value)">
-        <span class="input-group-text">₫</span>
-      </div>`}
-      <!-- Preview giá cuối -->
-      ${basePrice > 0 ? `
-      <div style="flex-shrink:0;font-size:11px;color:#7c3aed;font-weight:700;white-space:nowrap;min-width:90px;text-align:right">
-        = ${_fmtPriceShort(finalPrice)}
-      </div>` : ''}
-      <!-- Xóa -->
+        <span class="input-group-text" style="font-size:11px">₫</span>
+      </div>
       <button type="button" class="btn btn-sm btn-outline-danger" style="flex-shrink:0"
         onclick="removeColor(${i})"><i class="bi bi-x"></i></button>
-    </div>`;
-  }).join('');
-}
-
-// Tính lại surcharge (₫) từ % khi giá bán thay đổi
-function recalcSurcharge(idx) {
-  const basePrice = parseFloat(document.getElementById('pPriceOut')?.value || 0) || 0;
-  const c = specialColors[idx];
-  if (!c || c.surcharge_type !== 'percent') return;
-  c.surcharge = Math.round(basePrice * (c.surcharge_pct || 0) / 100);
-  document.getElementById('pSpecialColors').value = JSON.stringify(specialColors);
-}
-
-// Tính lại tất cả khi giá bán thay đổi
-function recalcAllSurcharges() {
-  const basePrice = parseFloat(document.getElementById('pPriceOut')?.value || 0) || 0;
-  specialColors.forEach(c => {
-    if (c.surcharge_type === 'percent') {
-      c.surcharge = Math.round(basePrice * (c.surcharge_pct || 0) / 100);
-    }
-  });
-  document.getElementById('pSpecialColors').value = JSON.stringify(specialColors);
-  if (specialColors.length) renderColors(); // refresh preview
-}
-
-function _fmtPriceShort(n) {
-  if (n >= 1000000) return (n/1000000).toFixed(1).replace('.0','') + 'M';
-  if (n >= 1000)    return (n/1000).toFixed(0) + 'k';
-  return n.toLocaleString('vi-VN');
+    </div>`).join('');
 }
 
 function addColorRow() {
-  const basePrice = parseFloat(document.getElementById('pPriceOut')?.value || 0) || 0;
-  const defaultPct = 10;
-  const computed   = Math.round(basePrice * defaultPct / 100);
-  specialColors.push({
-    name:           '',
-    code:           '',
-    surcharge_type: 'percent',
-    surcharge_pct:  defaultPct,
-    surcharge:      computed,   // ₫ tính sẵn
-  });
+  specialColors.push({ name: '', code: '', surcharge: 0 });
   renderColors();
+  // Focus vào ô tên màu vừa thêm
   const rows = document.querySelectorAll('#specialColorsContainer .d-flex');
   if (rows.length) rows[rows.length-1].querySelector('input')?.focus();
 }
 
 function updateColor(idx, field, val) {
   if (!specialColors[idx]) return;
-  if (field === 'surcharge' || field === 'surcharge_pct') {
-    specialColors[idx][field] = parseFloat(val) || 0;
-  } else if (field === 'surcharge_type') {
-    specialColors[idx][field] = val;
-    // Reset giá trị khi đổi loại
-    if (val === 'percent') {
-      specialColors[idx].surcharge_pct = specialColors[idx].surcharge_pct || 10;
-      recalcSurcharge(idx);
-    } else {
-      specialColors[idx].surcharge = specialColors[idx].surcharge || 0;
-    }
-  } else {
-    specialColors[idx][field] = val;
-  }
+  specialColors[idx][field] = field === 'surcharge' ? (parseFloat(val)||0) : val;
   document.getElementById('pSpecialColors').value = JSON.stringify(specialColors);
 }
 

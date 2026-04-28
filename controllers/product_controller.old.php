@@ -11,15 +11,10 @@ function _parseSpecialColors($raw): array
     foreach ($data as $c) {
         $name = trim($c['name'] ?? '');
         if (!$name) continue;
-        $type       = $c['surcharge_type'] ?? 'fixed';
-        $surcharge  = max(0, floatval($c['surcharge'] ?? 0));
-        $pct        = max(0, min(100, floatval($c['surcharge_pct'] ?? 0)));
         $result[] = [
-            'name'           => $name,
-            'code'           => trim($c['code'] ?? ''),
-            'surcharge_type' => $type,
-            'surcharge_pct'  => $pct,
-            'surcharge'      => $surcharge, // luôn lưu ₫ đã tính để dùng khi lập HĐ
+            'name'      => $name,
+            'code'      => trim($c['code'] ?? ''),
+            'surcharge' => max(0, floatval($c['surcharge'] ?? 0)),
         ];
     }
     return $result;

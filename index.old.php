@@ -109,13 +109,13 @@ if ($page==='invoices' && ($_GET['action']??'')=== 'delivered') {
     requireRole(['superadmin','admin','sales']);
     $r=updateDeliveryStatus($_GET['branch']??'',$_GET['id']??'','delivered');
     $_SESSION['flash']=['type'=> $r['success']?'success':'danger','message'=> $r['message']];
-    header("Location: index.php?page=invoices&branch=".($_GET['branch']??'')."&ym=".($_GET['ym']??date('Y_m'))); exit;
+    header("Location: index.php?page=invoices&branch=".($_GET['branch']??'').."&ym=".($_GET['ym']??date('Y_m'))); exit;
 }
-if ($page==='invoices' && ($_GET['action']??'')==='update' && $_SERVER['REQUEST_METHOD']==='POST') {
+if ($page==='invoices' && ($_GET['action']??'')=== 'update' && $_SERVER['REQUEST_METHOD']=== 'POST') {
     requireRole(['superadmin','admin']);
     $r=updateInvoice($_GET['branch']??'',$_GET['id']??'',$_POST);
-    $_SESSION['flash']=['type'=>$r['success']?'success':'danger','message'=>$r['message']];
-    header("Location: index.php?page=invoices&branch=".($_GET['branch']??'')."&ym=".($_GET['ym']??date('Y_m'))); exit;
+    $_SESSION['flash']=['type'=> $r['success']?'success':'danger','message'=> $r['message']];
+    header("Location: index.php?page=invoices&branch=".($_GET['branch']??'').."&ym=".($_GET['ym']??date('Y_m'))); exit;
 }
 
 // CATEGORIES

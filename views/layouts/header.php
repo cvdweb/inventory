@@ -25,13 +25,15 @@
   <?php $user = currentUser(); $userBranch = $user['branch'] ?? null; ?>
   
   <!-- User info -->
-  <div class="sidebar-user">
+  <a href="index.php?page=profile" class="sidebar-user" style="text-decoration:none;transition:background .15s"
+     onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background=''">
     <div class="user-avatar"><i class="bi <?= $user['icon'] ?? 'bi-person' ?>"></i></div>
     <div class="user-info">
       <div class="user-name"><?= htmlspecialchars($user['name'] ?? '') ?></div>
       <div class="user-role"><?= match($user['role'] ?? '') { 'superadmin' => 'Super Admin', 'admin' => 'Quản trị viên', 'sales' => 'Bán hàng', 'warehouse' => 'Nhập hàng', default => '' } ?></div>
     </div>
-  </div>
+    <i class="bi bi-pencil-square ms-auto" style="font-size:13px;color:#6b7280;flex-shrink:0"></i>
+  </a>
 
   <nav class="sidebar-nav">
     <a href="index.php" class="nav-item <?= ($page === 'dashboard') ? 'active' : '' ?>">
@@ -61,13 +63,6 @@
     </a>
     <?php endforeach; ?>
 
-    <?php if (in_array($user['role'] ?? '', ['superadmin', 'admin', 'sales'])): ?>
-    <div class="nav-section">Công Cụ</div>
-    <a href="index.php?page=search_invoices" class="nav-item <?= ($page === 'search_invoices') ? 'active' : '' ?>">
-      <i class="bi bi-search"></i><span>Tìm Kiếm HĐ</span>
-    </a>
-    <?php endif; ?>
-
     <div class="nav-section">Hệ Thống</div>
     <?php if (canManageUsers()): ?>
     <a href="index.php?page=categories" class="nav-item <?= ($page === 'categories') ? 'active' : '' ?>">
@@ -76,12 +71,9 @@
     <a href="index.php?page=users" class="nav-item <?= ($page === 'users') ? 'active' : '' ?>">
       <i class="bi bi-people-fill"></i><span>Tài Khoản NV</span>
     </a>
-    <a href="index.php?page=backup" class="nav-item <?= ($page === 'backup') ? 'active' : '' ?>">
-      <i class="bi bi-cloud-arrow-up-fill"></i><span>Sao Lưu</span>
-    </a>
     <?php endif; ?>
-    <a href="index.php?page=help" class="nav-item <?= ($page === 'help') ? 'active' : '' ?>">
-      <i class="bi bi-book-fill"></i><span>Hướng Dẫn SD</span>
+    <a href="index.php?page=profile" class="nav-item <?= ($page === 'profile') ? 'active' : '' ?>">
+      <i class="bi bi-person-circle"></i><span>Tài Khoản Của Tôi</span>
     </a>
     <a href="index.php?page=logout" class="nav-item nav-logout">
       <i class="bi bi-box-arrow-left"></i><span>Đăng Xuất</span>

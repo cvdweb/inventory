@@ -190,11 +190,13 @@ function deliveryBadge(array $inv): string {
 
               <!-- Đánh dấu đã giao -->
               <?php if ($st === 'pending'): ?>
-              <a href="index.php?page=invoices&branch=<?= $reqBranch ?>&action=delivered&id=<?= urlencode($inv['id']??'') ?>&ym=<?= $yearMonth ?>"
-                 class="btn btn-sm btn-outline-success" title="Đánh dấu đã giao"
-                 onclick="return confirm('Xác nhận đã giao hàng cho đơn này?')">
-                <i class="bi bi-check2-circle"></i>
-              </a>
+              <form method="POST" action="index.php?page=invoices&branch=<?= $reqBranch ?>&action=delivered&id=<?= urlencode($inv['id']??'') ?>&ym=<?= $yearMonth ?>" class="d-inline"
+                 onsubmit="return confirm('Xác nhận đã giao hàng cho đơn này?')">
+                <?= csrfField() ?>
+                <button type="submit" class="btn btn-sm btn-outline-success" title="Đánh dấu đã giao">
+                  <i class="bi bi-check2-circle"></i>
+                </button>
+              </form>
               <?php endif; ?>
             </div>
           </td>
@@ -244,6 +246,15 @@ let _currentInv = null;
 function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function _money(n) { return new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND'}).format(Number(n)||0); }
 function _payLabel(p) { return {cash:'Tiền mặt',transfer:'Chuyển khoản',cod:'COD',credit:'Công nợ'}[p]||p||''; }
+function _formatDateVN(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return _esc(value);
+  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const y = date.getFullYear();
+  return `Ngày ${d} tháng ${m} năm ${y}`;
+}
 function _deliveryLabel(inv) {
   const st = inv.delivery_status||'self_pickup';
   const dt = inv.delivery_date||'';
@@ -349,60 +360,67 @@ function printInvoice() {
 <style>
   @page { size: A4; margin: 12mm 16mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Times New Roman', serif; font-size: 14pt; color: #000; }
+  body { font-family: 'Times New Roman', serif; font-size: 12pt; color: #000; line-height:1.05 }
 
-  /* Header doanh nghiệp — chỉ thông tin công ty, căn giữa */
+  /* Header doanh nghiệp — chỉ thông tin công ty, căn giữa. spacing reduced */
   .biz-header {
     text-align: center;
-    padding-bottom: 5mm;
-    margin-bottom: 5mm;
+    padding-bottom: 3mm;
+    margin-bottom: 4mm;
   }
-  .biz-name    { font-size: 18pt; font-weight: bold; letter-spacing: .5px; }
-  .biz-branch  { font-size: 12pt; color: #555; margin-top: 2mm; }
-  .biz-contact { font-size: 14pt; color: #222; margin-top: 2mm; font-weight: bold; }
-  .biz-slogan  { font-size: 11pt; color: #777; font-style: italic; margin-top: 2mm; }
+  .biz-name    { font-size: 16pt; font-weight: bold; letter-spacing: .5px; }
+  .biz-contact { font-size: 12.5pt; color: #222; margin-top: 1mm; font-weight: bold; }
+  .biz-slogan  { font-size: 10pt; color: #777; font-style: italic; margin-top: 1mm; }
 
   /* Tiêu đề */
   .inv-title {
     text-align: center;
-    font-size: 20pt;
+    font-size: 16pt;
     font-weight: bold;
-    letter-spacing: 3px;
+    letter-spacing: 2px;
     text-transform: uppercase;
-    margin: 5mm 0 6mm;
+    margin: 4mm 0 4mm;
   }
 
-  /* Thông tin khách */
+  /* Thông tin khách: label và giá trị trên cùng 1 hàng để tiết kiệm không gian */
   .info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 2mm 8mm;
-    font-size: 13pt;
-    margin-bottom: 6mm;
-    padding: 3.5mm 5mm;
+    gap: 1.5mm 6mm;
+    font-size: 12.5pt;
+    margin-bottom: 4mm;
+    padding: 2.5mm 4mm;
     border: 1px solid #bbb;
     border-radius: 2mm;
     background: #fafafa;
   }
-  .info-label { color: #666; font-size: 11pt; }
-  .info-val   { font-weight: bold; font-size: 14pt; }
+  .info-grid > div { display:flex; align-items:center; gap:6mm; }
+  .info-label { color: #666; font-size: 10.5pt; width:110px; flex-shrink:0; }
+  .info-val   { font-weight: bold; font-size: 13pt; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .info-grid > div:first-child .info-val { font-size: 17pt; }
 
   /* Bảng hàng hóa */
   table { width: 100%; border-collapse: collapse; margin-bottom: 5mm; font-size: 13pt; }
   thead tr { background: #e0e0e0; }
-  th { border: 1px solid #888; padding: 3mm 4mm; font-weight: bold; font-size: 13pt; }
-  td { border: 1px solid #bbb; padding: 3mm 4mm; vertical-align: middle; }
-  tfoot td { background: #efefef; font-weight: bold; font-size: 15pt; }
+  th { border: 1px solid #888; padding: 2mm 3mm; font-weight: bold; font-size: 12.5pt; }
+  td { border: 1px solid #bbb; padding: 2mm 3mm; vertical-align: middle; }
+  tfoot td { background: #efefef; font-weight: bold; font-size: 14pt; }
 
-  .inv-note { font-size: 12pt; color: #444; margin-bottom: 4mm;
-    padding: 2mm 0; border-top: 1px dashed #ccc; }
+  .inv-note { font-size: 11.5pt; color: #444; margin-bottom: 3mm;
+    padding: 1.5mm 0; border-top: 1px dashed #ccc; }
+  .inv-signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; margin-top: 2mm; }
+  .sign-box { display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:0.5mm; text-align: center; font-size: 12.5pt; }
+  .sign-date { font-size: 10.8pt; color: #444; margin-bottom: 0; }
+  .sign-title { font-weight: bold; margin-bottom: 0; }
+  .sign-line { min-height: 8pt; margin-bottom: 0; width: 90%; }
+  .sign-hint, .sign-name { font-size: 10.5pt; color: #444; margin-top:0; line-height:1.1; }
+  .sign-name { font-weight: 700; }
 </style>
 </head><body>
 
 <!-- Header: chỉ thông tin doanh nghiệp, căn giữa -->
 <div class="biz-header">
   <div class="biz-name">${_esc(BIZ.name)}</div>
-  ${branchName ? `<div class="biz-branch">${_esc(branchName)}</div>` : ''}
   <div class="biz-contact">📍 ${_esc(BIZ.address)}</div>
   <div class="biz-contact">📞 ${_esc(BIZ.phone)}</div>
   ${BIZ.slogan ? `<div class="biz-slogan">"${_esc(BIZ.slogan)}"</div>` : ''}
@@ -450,6 +468,22 @@ function printInvoice() {
 </table>
 
 ${inv.note ? `<div class="inv-note"><b>Ghi chú:</b> ${_esc(inv.note)}</div>` : ''}
+
+<div class="inv-note"><b>Lưu ý:</b> Kiểm tra hàng hóa và toa đầy đủ trước khi thanh toán. Khi thanh toán, vui lòng ký và ghi họ tên.</div>
+
+<div class="inv-signatures">
+  <div class="sign-box">
+    <div class="sign-title">Người nhận hàng</div>
+    <div class="sign-line"></div>
+    <div class="sign-hint">(Ký, ghi rõ họ tên)</div>
+  </div>
+  <div class="sign-box">
+    <div class="sign-date">${_formatDateVN(inv.created_at || inv.createdAt || new Date().toISOString())}</div>
+    <div class="sign-title">Người lập hóa đơn</div>
+    <div class="sign-line"></div>
+    <div class="sign-name">${_esc(inv.created_by||'')}</div>
+  </div>
+</div>
 
 <script>window.onload = function(){ window.print(); window.close(); }<\/script>
 </body></html>`);

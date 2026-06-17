@@ -1,5 +1,5 @@
 <?php
-$pageTitle = 'Quản Lý Nhóm Hàng';
+$pageTitle = 'Quáº£n LÃ½ NhÃ³m HÃ ng';
 include BASE_PATH . '/views/layouts/header.php';
 $branches  = getAccessibleBranches();
 $selBranch = $_GET['branch'] ?? array_key_first($branches);
@@ -10,15 +10,15 @@ $icons     = CAT_ICONS;
 
 <div class="page-header d-flex flex-wrap align-items-center justify-content-between gap-3">
   <div>
-    <h2><i class="bi bi-collection-fill me-2 text-purple" style="color:#8b5cf6"></i>Quản Lý Nhóm Hàng</h2>
-    <p>Thêm, sửa, sắp xếp nhóm hàng theo chi nhánh</p>
+    <h2><i class="bi bi-collection-fill me-2 text-purple" style="color:#8b5cf6"></i>Quáº£n LÃ½ NhÃ³m HÃ ng</h2>
+    <p>ThÃªm, sá»­a, sáº¯p xáº¿p nhÃ³m hÃ ng theo chi nhÃ¡nh</p>
   </div>
   <button class="btn btn-primary" onclick="_modal('addCatModal').show()">
-    <i class="bi bi-plus-lg me-1"></i>Thêm Nhóm Hàng
+    <i class="bi bi-plus-lg me-1"></i>ThÃªm NhÃ³m HÃ ng
   </button>
 </div>
 
-<!-- Tab chi nhánh -->
+<!-- Tab chi nhÃ¡nh -->
 <ul class="nav nav-tabs mb-3">
   <?php foreach ($branches as $bId => $b): ?>
   <li class="nav-item">
@@ -31,7 +31,7 @@ $icons     = CAT_ICONS;
   <?php endforeach; ?>
 </ul>
 
-<!-- Danh sách nhóm -->
+<!-- Danh sÃ¡ch nhÃ³m -->
 <div class="row g-3 mb-3">
 <?php foreach ($cats as $idx => $cat):
   $prodFile = DATA_PATH . "/{$selBranch}/" . $cat['file'];
@@ -54,21 +54,21 @@ $icons     = CAT_ICONS;
           </div>
         </div>
         <?php if (!$isActive): ?>
-        <span class="badge bg-danger bg-opacity-10 text-danger" style="font-size:10px">Ẩn</span>
+        <span class="badge bg-danger bg-opacity-10 text-danger" style="font-size:10px">áº¨n</span>
         <?php endif; ?>
       </div>
 
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
           <div class="fw-800" style="font-size:22px;color:#111"><?= $prodCount ?></div>
-          <div style="font-size:11px;color:#9ca3af">Sản phẩm</div>
+          <div style="font-size:11px;color:#9ca3af">Sáº£n pháº©m</div>
         </div>
         <div class="text-end">
-          <div style="font-size:11px;color:#9ca3af">Thứ tự</div>
+          <div style="font-size:11px;color:#9ca3af">Thá»© tá»±</div>
           <div class="fw-700" style="font-size:16px;color:#6b7280">#<?= $cat['sort_order'] ?? ($idx+1) ?></div>
         </div>
         <div class="text-end">
-          <div style="font-size:11px;color:#9ca3af">File dữ liệu</div>
+          <div style="font-size:11px;color:#9ca3af">File dá»¯ liá»‡u</div>
           <div style="font-size:11px;font-family:'JetBrains Mono',monospace;color:#6b7280"><?= htmlspecialchars($cat['file']) ?></div>
         </div>
       </div>
@@ -82,25 +82,28 @@ $icons     = CAT_ICONS;
             "sort_order"   => $cat["sort_order"] ?? ($idx+1),
             "active"       => $cat["active"] ?? true,
           ], JSON_HEX_APOS) ?>)'>
-          <i class="bi bi-pencil me-1"></i>Sửa
+          <i class="bi bi-pencil me-1"></i>Sá»­a
         </button>
 
-        <a href="index.php?page=categories&branch=<?= $selBranch ?>&action=toggle&key=<?= urlencode($cat['key']) ?>"
-           class="btn btn-sm <?= $isActive ? 'btn-outline-secondary' : 'btn-outline-success' ?>"
-           title="<?= $isActive ? 'Ẩn nhóm' : 'Hiện nhóm' ?>"
-           onclick="return confirm('<?= $isActive ? 'Ẩn nhóm hàng này khỏi danh sách?' : 'Hiện lại nhóm hàng này?' ?>')">
-          <i class="bi <?= $isActive ? 'bi-eye-slash' : 'bi-eye' ?>"></i>
-        </a>
+        <form method="POST" action="index.php?page=categories&branch=<?= $selBranch ?>&action=toggle&key=<?= urlencode($cat['key']) ?>" class="d-inline"
+           onsubmit="return confirm('<?= $isActive ? 'Ẩn nhóm hàng này khỏi danh sách?' : 'Hiện lại nhóm hàng này?' ?>')">
+          <?= csrfField() ?>
+          <button type="submit" class="btn btn-sm <?= $isActive ? 'btn-outline-secondary' : 'btn-outline-success' ?>"
+             title="<?= $isActive ? 'Ẩn nhóm' : 'Hiện nhóm' ?>">
+            <i class="bi <?= $isActive ? 'bi-eye-slash' : 'bi-eye' ?>"></i>
+          </button>
+        </form>
 
         <?php if ($prodCount === 0): ?>
-        <a href="index.php?page=categories&branch=<?= $selBranch ?>&action=delete&key=<?= urlencode($cat['key']) ?>"
-           class="btn btn-sm btn-outline-danger"
-           title="Xóa nhóm"
-           onclick="return confirm('Xóa nhóm \'<?= htmlspecialchars($cat['name']) ?>\'?')">
-          <i class="bi bi-trash"></i>
-        </a>
+        <form method="POST" action="index.php?page=categories&branch=<?= $selBranch ?>&action=delete&key=<?= urlencode($cat['key']) ?>" class="d-inline"
+           onsubmit="return confirm('Xóa nhóm \'<?= htmlspecialchars($cat['name']) ?>\'?')">
+          <?= csrfField() ?>
+          <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa nhóm">
+            <i class="bi bi-trash"></i>
+          </button>
+        </form>
         <?php else: ?>
-        <button class="btn btn-sm btn-outline-danger" disabled title="Còn <?= $prodCount ?> sản phẩm, không thể xóa">
+        <button class="btn btn-sm btn-outline-danger" disabled title="CÃ²n <?= $prodCount ?> sáº£n pháº©m, khÃ´ng thá»ƒ xÃ³a">
           <i class="bi bi-trash"></i>
         </button>
         <?php endif; ?>
@@ -114,45 +117,46 @@ $icons     = CAT_ICONS;
 <div class="col-12">
   <div class="empty-state">
     <i class="bi bi-collection"></i>
-    <p>Chưa có nhóm hàng nào.<br>Nhấn <b>Thêm Nhóm Hàng</b> để bắt đầu.</p>
+    <p>ChÆ°a cÃ³ nhÃ³m hÃ ng nÃ o.<br>Nháº¥n <b>ThÃªm NhÃ³m HÃ ng</b> Ä‘á»ƒ báº¯t Ä‘áº§u.</p>
   </div>
 </div>
 <?php endif; ?>
 </div>
 
-<!-- Ghi chú -->
+<!-- Ghi chÃº -->
 <div class="card" style="border-left:4px solid #f59e0b">
   <div class="card-body py-2" style="font-size:13px;color:#6b7280">
     <i class="bi bi-info-circle-fill text-warning me-2"></i>
-    <b>Lưu ý:</b> Chỉ xóa được nhóm hàng khi không còn sản phẩm nào. Nút <i class="bi bi-trash"></i> chỉ hiện khi nhóm rỗng. 
-    Ẩn nhóm sẽ không hiện trong form nhập hàng và hóa đơn nhưng dữ liệu vẫn được giữ nguyên.
+    <b>LÆ°u Ã½:</b> Chá»‰ xÃ³a Ä‘Æ°á»£c nhÃ³m hÃ ng khi khÃ´ng cÃ²n sáº£n pháº©m nÃ o. NÃºt <i class="bi bi-trash"></i> chá»‰ hiá»‡n khi nhÃ³m rá»—ng.
+    áº¨n nhÃ³m sáº½ khÃ´ng hiá»‡n trong form nháº­p hÃ ng vÃ  hÃ³a Ä‘Æ¡n nhÆ°ng dá»¯ liá»‡u váº«n Ä‘Æ°á»£c giá»¯ nguyÃªn.
   </div>
 </div>
 
-<!-- ===== MODAL THÊM NHÓM ===== -->
+<!-- ===== MODAL THÃŠM NHÃ“M ===== -->
 <div class="modal fade" id="addCatModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-plus-circle-fill me-2" style="color:#8b5cf6"></i>Thêm Nhóm Hàng Mới</h5>
+        <h5 class="modal-title"><i class="bi bi-plus-circle-fill me-2" style="color:#8b5cf6"></i>ThÃªm NhÃ³m HÃ ng Má»›i</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form method="POST" action="index.php?page=categories&branch=<?= $selBranch ?>&action=save">
+        <?= csrfField() ?>
         <input type="hidden" name="action_type" value="add">
         <div class="modal-body">
           <div class="row g-3">
             <div class="col-8">
-              <label class="form-label">Tên nhóm hàng *</label>
+              <label class="form-label">TÃªn nhÃ³m hÃ ng *</label>
               <input type="text" name="name" id="addCatName" class="form-control" required
-                placeholder="VD: Sơn Nước, Vật Tư Điện..."
+                placeholder="VD: SÆ¡n NÆ°á»›c, Váº­t TÆ° Äiá»‡n..."
                 oninput="previewKey(this.value,'addCatKeyPreview')">
               <div class="form-text">
-                Key tự động:
-                <code id="addCatKeyPreview" style="color:#8b5cf6">—</code>
+                Key tá»± Ä‘á»™ng:
+                <code id="addCatKeyPreview" style="color:#8b5cf6">â€”</code>
               </div>
             </div>
             <div class="col-4">
-              <label class="form-label">Thứ tự hiển thị</label>
+              <label class="form-label">Thá»© tá»± hiá»ƒn thá»‹</label>
               <input type="number" name="sort_order" class="form-control" min="1" value="<?= count($cats)+1 ?>">
             </div>
             <div class="col-12">
@@ -174,44 +178,45 @@ $icons     = CAT_ICONS;
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
-          <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Thêm nhóm</button>
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Há»§y</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>ThÃªm nhÃ³m</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- ===== MODAL SỬA NHÓM ===== -->
+<!-- ===== MODAL Sá»¬A NHÃ“M ===== -->
 <div class="modal fade" id="editCatModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Sửa Nhóm Hàng</h5>
+        <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Sá»­a NhÃ³m HÃ ng</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form method="POST" action="index.php?page=categories&branch=<?= $selBranch ?>&action=save">
+        <?= csrfField() ?>
         <input type="hidden" name="action_type" value="edit">
         <input type="hidden" name="original_key" id="editCatOrigKey">
         <div class="modal-body">
           <div class="mb-2 p-2 rounded-3" style="background:#f9fafb;border:1px solid #e5e7eb;font-size:12px;color:#9ca3af">
             Key: <code id="editCatKeyDisplay" style="color:#8b5cf6"></code>
-            &nbsp;·&nbsp; File: <code id="editCatFileDisplay"></code>
+            &nbsp;Â·&nbsp; File: <code id="editCatFileDisplay"></code>
           </div>
           <div class="row g-3">
             <div class="col-8">
-              <label class="form-label">Tên nhóm hàng *</label>
+              <label class="form-label">TÃªn nhÃ³m hÃ ng *</label>
               <input type="text" name="name" id="editCatName" class="form-control" required>
             </div>
             <div class="col-4">
-              <label class="form-label">Thứ tự</label>
+              <label class="form-label">Thá»© tá»±</label>
               <input type="number" name="sort_order" id="editCatOrder" class="form-control" min="1">
             </div>
             <div class="col-6">
-              <label class="form-label">Trạng thái</label>
+              <label class="form-label">Tráº¡ng thÃ¡i</label>
               <select name="active" id="editCatActive" class="form-select">
-                <option value="1">Hiển thị</option>
-                <option value="0">Ẩn</option>
+                <option value="1">Hiá»ƒn thá»‹</option>
+                <option value="0">áº¨n</option>
               </select>
             </div>
             <div class="col-12">
@@ -232,8 +237,8 @@ $icons     = CAT_ICONS;
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
-          <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Lưu thay đổi</button>
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Há»§y</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>LÆ°u thay Ä‘á»•i</button>
         </div>
       </form>
     </div>
@@ -255,15 +260,15 @@ function _modal(id) {
   return bootstrap.Modal.getOrCreateInstance(document.getElementById(id));
 }
 
-// Preview key khi gõ tên nhóm
+// Preview key khi gÃµ tÃªn nhÃ³m
 function previewKey(val, previewId) {
   const slug = val.toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/đ/g,'d').replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
-  document.getElementById(previewId).textContent = slug || '—';
+    .replace(/Ä‘/g,'d').replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+  document.getElementById(previewId).textContent = slug || 'â€”';
 }
 
-// Highlight icon được chọn
+// Highlight icon Ä‘Æ°á»£c chá»n
 function highlightIcon(radio) {
   const picker = radio.closest('.d-flex');
   picker.querySelectorAll('.icon-btn').forEach(b => {
@@ -277,7 +282,7 @@ function highlightIcon(radio) {
   btn.style.color       = '#8b5cf6';
 }
 
-// Mở modal sửa và điền dữ liệu
+// Má»Ÿ modal sá»­a vÃ  Ä‘iá»n dá»¯ liá»‡u
 function openEditCat(c) {
   document.getElementById('editCatOrigKey').value         = c.original_key;
   document.getElementById('editCatKeyDisplay').textContent= c.original_key;
@@ -286,7 +291,7 @@ function openEditCat(c) {
   document.getElementById('editCatOrder').value           = c.sort_order;
   document.getElementById('editCatActive').value          = c.active ? '1' : '0';
 
-  // Chọn icon tương ứng
+  // Chá»n icon tÆ°Æ¡ng á»©ng
   const picker = document.getElementById('editIconPicker');
   picker.querySelectorAll('input[type=radio]').forEach(r => {
     r.checked = (r.value === c.icon);

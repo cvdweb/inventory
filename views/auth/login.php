@@ -32,6 +32,7 @@
     <?php endif; ?>
 
     <form method="POST" action="index.php?page=login">
+      <?= csrfField() ?>
       <div class="mb-3">
         <label class="form-label">Tên đăng nhập</label>
         <div class="input-group">
@@ -48,7 +49,7 @@
         </div>
       </div>
       <button type="submit" class="btn btn-primary w-100">
-        <i class="bi bi-box-arrow-in-right me-2"></i>Đăng Nhập
+        <i class="bi bi-box-arrow-in-right me-2"></i>Đăng nhập
       </button>
     </form>
 

@@ -30,7 +30,7 @@
     <div class="user-avatar"><i class="bi <?= $user['icon'] ?? 'bi-person' ?>"></i></div>
     <div class="user-info">
       <div class="user-name"><?= htmlspecialchars($user['name'] ?? '') ?></div>
-      <div class="user-role"><?= match($user['role'] ?? '') { 'superadmin' => 'Super Admin', 'admin' => 'Quản trị viên', 'sales' => 'Bán hàng', 'warehouse' => 'Nhập hàng', default => '' } ?></div>
+      <div class="user-role"><?= match($user['role'] ?? '') { 'superadmin' => 'Kỹ Thuật', 'owner' => 'Chủ Cửa Hàng', 'admin' => 'Quản lý', 'sales' => 'Bán hàng', 'warehouse' => 'Nhập hàng', default => '' } ?></div>
     </div>
     <i class="bi bi-pencil-square ms-auto" style="font-size:13px;color:#6b7280;flex-shrink:0"></i>
   </a>
@@ -40,17 +40,18 @@
       <i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span>
     </a>
 
+    <?php if (canViewBusinessData()): ?>
     <?php foreach (getAccessibleBranches() as $bId => $b): ?>
     <div class="nav-section"><?= $b['short'] ?> — <?= $b['name'] ?></div>
     <a href="index.php?page=products&branch=<?= $bId ?>" class="nav-item <?= ($page === 'products' && ($reqBranch ?? '') === $bId) ? 'active' : '' ?>">
       <i class="bi bi-box2-fill"></i><span>Sản Phẩm</span>
     </a>
-    <?php if (in_array($user['role'] ?? '', ['superadmin', 'admin', 'warehouse'])): ?>
+    <?php if (in_array($user['role'] ?? '', ['owner', 'admin', 'warehouse'])): ?>
     <a href="index.php?page=imports&branch=<?= $bId ?>" class="nav-item <?= ($page === 'imports' && ($reqBranch ?? '') === $bId) ? 'active' : '' ?>">
       <i class="bi bi-download"></i><span>Nhập Hàng</span>
     </a>
     <?php endif; ?>
-    <?php if (in_array($user['role'] ?? '', ['superadmin', 'admin', 'sales'])): ?>
+    <?php if (in_array($user['role'] ?? '', ['owner', 'admin', 'sales'])): ?>
     <a href="index.php?page=invoice&branch=<?= $bId ?>" class="nav-item <?= ($page === 'invoice' && ($reqBranch ?? '') === $bId) ? 'active' : '' ?>">
       <i class="bi bi-receipt"></i><span>Lập Hóa Đơn</span>
     </a>
@@ -63,15 +64,33 @@
     </a>
     <?php endforeach; ?>
 
+    <?php if (in_array($user['role'] ?? '', ['owner', 'admin', 'sales'])): ?>
+    <div class="nav-section">Công Cụ</div>
+    <a href="index.php?page=search_invoices" class="nav-item <?= ($page === 'search_invoices') ? 'active' : '' ?>">
+      <i class="bi bi-search"></i><span>Tìm Kiếm HĐ</span>
+    </a>
+    <?php endif; ?>
+    <?php endif; // canViewBusinessData ?>
+
     <div class="nav-section">Hệ Thống</div>
-    <?php if (canManageUsers()): ?>
+    <?php if (in_array($user['role'] ?? '', ['owner', 'admin'])): ?>
     <a href="index.php?page=categories" class="nav-item <?= ($page === 'categories') ? 'active' : '' ?>">
       <i class="bi bi-collection-fill"></i><span>Nhóm Hàng</span>
     </a>
+    <?php endif; ?>
+    <?php if (canManageUsers()): ?>
     <a href="index.php?page=users" class="nav-item <?= ($page === 'users') ? 'active' : '' ?>">
       <i class="bi bi-people-fill"></i><span>Tài Khoản NV</span>
     </a>
     <?php endif; ?>
+    <?php if (in_array($user['role'] ?? '', ['superadmin', 'owner', 'admin'])): ?>
+    <a href="index.php?page=backup" class="nav-item <?= ($page === 'backup') ? 'active' : '' ?>">
+      <i class="bi bi-cloud-arrow-up-fill"></i><span>Sao Lưu</span>
+    </a>
+    <?php endif; ?>
+    <a href="index.php?page=help" class="nav-item <?= ($page === 'help') ? 'active' : '' ?>">
+      <i class="bi bi-book-fill"></i><span>Hướng Dẫn SD</span>
+    </a>
     <a href="index.php?page=profile" class="nav-item <?= ($page === 'profile') ? 'active' : '' ?>">
       <i class="bi bi-person-circle"></i><span>Tài Khoản Của Tôi</span>
     </a>

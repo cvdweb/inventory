@@ -50,6 +50,7 @@ include BASE_PATH . '/views/layouts/header.php';
         <?php unset($_SESSION['profile_error']); endif; ?>
 
         <form method="POST" action="index.php?page=profile&action=update_info">
+        <?= csrfField() ?>
           <div class="mb-3">
             <label class="form-label">Tên đăng nhập</label>
             <input type="text" class="form-control" value="<?= htmlspecialchars($username) ?>"
@@ -105,6 +106,7 @@ include BASE_PATH . '/views/layouts/header.php';
         <?php unset($_SESSION['pwd_error']); endif; ?>
 
         <form method="POST" action="index.php?page=profile&action=change_password">
+        <?= csrfField() ?>
           <div class="mb-3">
             <label class="form-label">Mật khẩu hiện tại *</label>
             <div class="input-group">

@@ -34,6 +34,7 @@ $statusColor   = $daysSinceLast<=1 ? 'green' : ($daysSinceLast<=7 ? 'amber' : 'r
     <p>Bảo vệ dữ liệu kinh doanh khỏi mất mát</p>
   </div>
   <form method="POST" action="index.php?page=backup&action=create">
+    <?= csrfField() ?>
     <button type="submit" class="btn btn-primary">
       <i class="bi bi-archive-fill me-2"></i>Sao Lưu Ngay
     </button>
@@ -103,10 +104,13 @@ $statusColor   = $daysSinceLast<=1 ? 'green' : ($daysSinceLast<=7 ? 'amber' : 'r
   <div class="card-header d-flex align-items-center justify-content-between">
     <span class="fw-700"><i class="bi bi-list-ul me-2"></i>Danh Sách File Backup (<?= count($backups) ?>)</span>
     <?php if(count($backups)>0): ?>
-    <a href="index.php?page=backup&action=cleanup" class="btn btn-sm btn-outline-danger"
-       onclick="return confirm('Chỉ giữ 10 file mới nhất, xóa phần còn lại?')">
-      <i class="bi bi-trash me-1"></i>Dọn dẹp
-    </a>
+    <form method="POST" action="index.php?page=backup&action=cleanup" class="m-0"
+       onsubmit="return confirm('Chỉ giữ 10 file mới nhất, xóa phần còn lại?')">
+      <?= csrfField() ?>
+      <button type="submit" class="btn btn-sm btn-outline-danger">
+        <i class="bi bi-trash me-1"></i>Dọn dẹp
+      </button>
+    </form>
     <?php endif; ?>
   </div>
   <div class="card-body p-0">
@@ -129,9 +133,12 @@ $statusColor   = $daysSinceLast<=1 ? 'green' : ($daysSinceLast<=7 ? 'amber' : 'r
           <td class="text-center">
             <a href="index.php?page=backup&action=download&file=<?= urlencode($bk['name']) ?>"
                class="btn btn-sm btn-outline-primary"><i class="bi bi-download me-1"></i>Tải về</a>
-            <a href="index.php?page=backup&action=delete&file=<?= urlencode($bk['name']) ?>"
-               class="btn btn-sm btn-outline-danger ms-1"
-               onclick="return confirm('Xóa file này?')"><i class="bi bi-trash"></i></a>
+            <form method="POST" action="index.php?page=backup&action=delete" class="d-inline ms-1"
+               onsubmit="return confirm('Xóa file này?')">
+              <?= csrfField() ?>
+              <input type="hidden" name="file" value="<?= htmlspecialchars($bk['name']) ?>">
+              <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+            </form>
           </td>
         </tr>
         <?php endforeach; ?>

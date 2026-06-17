@@ -61,6 +61,7 @@ include BASE_PATH . '/views/layouts/header.php';
 <form method="POST"
       action="index.php?page=invoices&branch=<?= $reqBranch ?>&action=update&id=<?= urlencode($invoiceId) ?>&ym=<?= $ym ?>"
       onsubmit="return invoiceSubmit(event)" id="invoiceForm">
+  <?= csrfField() ?>
   <input type="hidden" name="items" id="invoiceItemsJson">
 
 <div class="pos-wrap">
@@ -114,7 +115,7 @@ include BASE_PATH . '/views/layouts/header.php';
             <input type="number" name="shipping_fee" id="inpShippingFee"
               class="form-control form-control-sm" min="0" step="1000"
               value="<?= htmlspecialchars($invoice['shipping_fee']??0) ?>"
-              placeholder="0 ₫"
+              placeholder="0 â‚«"
               oninput="updateTotals()">
           </div>
           <div class="col-md-3">
@@ -183,7 +184,7 @@ include BASE_PATH . '/views/layouts/header.php';
               <div class="d-flex justify-content-between mt-1">
                 <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#9ca3af"><?= htmlspecialchars($p['code']) ?></span>
                 <span style="font-size:11px;font-weight:700;color:<?= $low?'#ef4444':'#10b981' ?>"><?= number_format($p['stock']??0,2,',','.') ?> <?= htmlspecialchars($p['unit']) ?></span>
-                <span style="font-size:11px;font-weight:700;color:#f59e0b"><?= number_format($p['price_out']??0,0,',','.') ?>₫</span>
+                <span style="font-size:11px;font-weight:700;color:#f59e0b"><?= number_format($p['price_out']??0,0,',','.') ?>â‚«</span>
               </div>
             </div>
             <?php endforeach; ?>
@@ -220,7 +221,7 @@ include BASE_PATH . '/views/layouts/header.php';
           <div class="d-flex align-items-center gap-3">
             <div class="text-end">
               <div style="font-size:11px;color:#9ca3af">TỔNG CỘNG</div>
-              <div id="invoiceTotal" style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:#f59e0b">0 ₫</div>
+              <div id="invoiceTotal" style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:#f59e0b">0 â‚«</div>
             </div>
             <button type="submit" class="btn btn-warning btn-lg px-4" style="white-space:nowrap">
               <i class="bi bi-check2-circle me-2"></i>Lưu Thay Đổi

@@ -26,6 +26,7 @@ include BASE_PATH . '/views/layouts/header.php';
     <div class="card-header"><i class="bi bi-plus-circle me-2"></i>Tạo Phiếu Nhập</div>
     <div class="card-body">
       <form method="POST" action="index.php?page=imports&branch=<?= $reqBranch ?>">
+        <?= csrfField() ?>
         <input type="hidden" name="action" value="import">
         <input type="hidden" name="branch" value="<?= $reqBranch ?>">
 

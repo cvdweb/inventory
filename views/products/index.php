@@ -122,11 +122,11 @@ include BASE_PATH . '/views/layouts/header.php';
               ], JSON_HEX_APOS|JSON_UNESCAPED_UNICODE) ?>)'>
               <i class="bi bi-pencil"></i>
             </button>
-            <a href="index.php?page=products&branch=<?= $reqBranch ?>&action=delete&id=<?= urlencode($p['id'] ?? '') ?>&cat=<?= urlencode($p['category_key'] ?? '') ?>"
-               class="btn btn-sm btn-outline-danger"
-               onclick="return confirm('Xóa sản phẩm \'<?= htmlspecialchars(addslashes($p['name'] ?? '')) ?>\'?')">
-              <i class="bi bi-trash"></i>
-            </a>
+            <form method="POST" action="index.php?page=products&branch=<?= $reqBranch ?>&action=delete&id=<?= urlencode($p['id'] ?? '') ?>&cat=<?= urlencode($p['category_key'] ?? '') ?>" class="d-inline"
+               onsubmit="return confirm('Xóa sản phẩm \'<?= htmlspecialchars(addslashes($p['name'] ?? '')) ?>\'?')">
+              <?= csrfField() ?>
+              <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+            </form>
           </td>
           <?php endif; ?>
         </tr>
@@ -147,6 +147,7 @@ include BASE_PATH . '/views/layouts/header.php';
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form method="POST" action="index.php?page=products&branch=<?= $reqBranch ?>&action=save">
+        <?= csrfField() ?>
         <!-- id rỗng = thêm mới, có giá trị = sửa -->
         <input type="hidden" name="id" id="pId" value="">
         <div class="modal-body">
@@ -189,12 +190,12 @@ include BASE_PATH . '/views/layouts/header.php';
             <div class="col-md-4">
               <label class="form-label">Giá nhập (₫)</label>
               <input type="number" name="price_in" id="pPriceIn" class="form-control" onfocus="this.select()"
-                value="0" min="0" step="1000">
+                value="0" min="0" step="1">
             </div>
             <div class="col-md-4">
               <label class="form-label">Giá bán (₫) *</label>
               <input type="number" name="price_out" id="pPriceOut" class="form-control" onfocus="this.select()"
-                value="0" min="0" step="1000" required
+                value="0" min="0" step="1" required
                 oninput="recalcAllSurcharges()">
             </div>
             <div class="col-md-4">
@@ -290,7 +291,7 @@ function printPriceList() {
               ${sc.code ? _esc(sc.code) : ''}
             </td>
             <td style="padding-left:20pt;color:#5b21b6">
-              <span style="margin-right:4pt">↳</span>${_esc(sc.name)}
+              <span style="margin-right:4pt">â†³</span>${_esc(sc.name)}
               <span style="font-size:9.5pt;color:#9ca3af;margin-left:6px">+ ${_fmtPrice(sc.surcharge)}</span>
             </td>
             <td style="text-align:center;color:#777">${_esc(p.unit||'')}</td>
@@ -460,7 +461,7 @@ function renderColors() {
       <!-- Loại phụ thu -->
       <select class="form-select form-select-sm" style="width:70px;flex-shrink:0"
         onchange="updateColor(${i},'surcharge_type',this.value);renderColors()">
-        <option value="fixed"   ${surchargeType==='fixed'  ?'selected':''}>₫</option>
+        <option value="fixed"   ${surchargeType==='fixed'  ?'selected':''}>â‚«</option>
         <option value="percent" ${surchargeType==='percent'?'selected':''}>%</option>
       </select>
       <!-- Giá trị phụ thu -->
@@ -474,10 +475,10 @@ function renderColors() {
       </div>` : `
       <div class="input-group input-group-sm" style="width:130px;flex-shrink:0">
         <input type="number" class="form-control" style="text-align:right"
-          min="0" step="1000" value="${fixVal}"
+          min="0" step="1" value="${fixVal}"
           onfocus="this.select()"
           oninput="updateColor(${i},'surcharge',this.value)">
-        <span class="input-group-text">₫</span>
+        <span class="input-group-text">â‚«</span>
       </div>`}
       <!-- Preview giá cuối -->
       ${basePrice > 0 ? `

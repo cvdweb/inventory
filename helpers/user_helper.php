@@ -7,10 +7,16 @@ define('USERS_FILE', DATA_PATH . '/users.json');
 
 // Các role hệ thống
 define('ROLES', [
-    'superadmin' => ['label' => 'Super Admin',  'icon' => 'bi-shield-fill-check', 'color' => 'danger'],
-    'admin'      => ['label' => 'Quản trị',     'icon' => 'bi-shield-check',      'color' => 'warning'],
-    'sales'      => ['label' => 'Bán hàng',     'icon' => 'bi-person-badge',      'color' => 'primary'],
-    'warehouse'  => ['label' => 'Nhập hàng',    'icon' => 'bi-truck',             'color' => 'success'],
+    'superadmin' => ['label' => 'Kỹ Thuật (Bạn)',  'icon' => 'bi-shield-fill-check', 'color' => 'danger',
+                     'desc'  => 'Backup dữ liệu, quản lý tài khoản — không xem dữ liệu kinh doanh'],
+    'owner'      => ['label' => 'Chủ Cửa Hàng',    'icon' => 'bi-star-fill',         'color' => 'warning',
+                     'desc'  => 'Toàn quyền kinh doanh, xem báo cáo, quản lý sản phẩm và nhân viên'],
+    'admin'      => ['label' => 'Quản lý',          'icon' => 'bi-shield-check',      'color' => 'info',
+                     'desc'  => 'Quản lý sản phẩm, hóa đơn, báo cáo toàn chi nhánh'],
+    'sales'      => ['label' => 'Bán hàng',         'icon' => 'bi-person-badge',      'color' => 'primary',
+                     'desc'  => 'Lập hóa đơn bán hàng tại chi nhánh được gán'],
+    'warehouse'  => ['label' => 'Nhập hàng',        'icon' => 'bi-truck',             'color' => 'success',
+                     'desc'  => 'Nhập hàng, cập nhật tồn kho cho tất cả chi nhánh'],
 ]);
 
 /**
@@ -55,7 +61,7 @@ function saveUser(array $userData): array
     if ($isNew) {
         $newUser = [
             'username'   => $userData['username'],
-            'password'   => md5($userData['password']),
+            'password'   => hashPassword($userData['password']),
             'name'       => $userData['name'],
             'role'       => $userData['role'],
             'branch'     => normalizeBranch($userData['branch'] ?? null),
@@ -73,6 +79,9 @@ function saveUser(array $userData): array
                 if ($u['role'] === 'superadmin' && $userData['role'] !== 'superadmin') {
                     return ['success' => false, 'message' => 'Không thể thay đổi role của Super Admin'];
                 }
+                if ($userData['role'] === 'superadmin' && $u['role'] !== 'superadmin') {
+                    return ['success' => false, 'message' => 'Không thể gán role Kỹ Thuật cho tài khoản thông thường'];
+                }
                 $u['name']       = $userData['name'];
                 $u['role']       = $userData['role'];
                 $u['branch']     = normalizeBranch($userData['branch'] ?? null);
@@ -81,7 +90,7 @@ function saveUser(array $userData): array
                 $u['updated_at'] = $now;
                 // Đổi mật khẩu chỉ khi có nhập
                 if (!empty($userData['password'])) {
-                    $u['password'] = md5($userData['password']);
+                    $u['password'] = hashPassword($userData['password']);
                 }
                 $found = true;
                 break;
@@ -108,7 +117,7 @@ function resetPassword(string $username, string $newPassword): array
     $found = false;
     foreach ($users as &$u) {
         if ($u['username'] === $username) {
-            $u['password']   = md5($newPassword);
+            $u['password']   = hashPassword($newPassword);
             $u['updated_at'] = date('Y-m-d H:i:s');
             $found = true;
             break;
@@ -182,6 +191,7 @@ function iconByRole(string $role): string
 {
     return match($role) {
         'superadmin' => 'bi-shield-fill-check',
+        'owner'      => 'bi-star-fill',
         'admin'      => 'bi-shield-check',
         'sales'      => 'bi-person-badge',
         'warehouse'  => 'bi-truck',

@@ -39,13 +39,14 @@ include BASE_PATH . '/views/layouts/header.php';
           $isSuperAdmin = ($u['role'] === 'superadmin');
           $isActive    = $u['active'] ?? true;
           $roleInfo    = $roles[$u['role']] ?? ['label' => $u['role'], 'color' => 'secondary', 'icon' => 'bi-person'];
-          // branch có thể là string (cũ) hoặc array (mới)
-          $userBranches = is_array($u['branch'] ?? null) ? $u['branch'] : ($u['branch'] ? [$u['branch']] : []);
-          if (empty($userBranches)) {
-              $branchName = '— Tất cả —';
-          } else {
-              $bNames = array_map(fn($bid) => $branches[$bid]['short'] ?? $bid, $userBranches);
-              $branchName = implode(', ', $bNames);
+          $branchName  = '— Tất cả —';
+          if (!empty($u['branch'])) {
+              if (is_array($u['branch'])) {
+                  $branchList = array_map(fn($b) => $branches[$b]['name'] ?? $b, $u['branch']);
+                  $branchName = implode(', ', $branchList);
+              } else {
+                  $branchName = $branches[$u['branch']]['name'] ?? $u['branch'];
+              }
           }
         ?>
         <tr class="<?= !$isActive ? 'opacity-50' : '' ?>">
@@ -53,7 +54,7 @@ include BASE_PATH . '/views/layouts/header.php';
             <div class="d-flex align-items-center gap-2">
               <div style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;font-size:16px;
                 background:<?= match($u['role']){'superadmin'=>'rgba(239,68,68,.12)','admin'=>'rgba(245,158,11,.12)','sales'=>'rgba(59,130,246,.12)',default=>'rgba(16,185,129,.12)'} ?>;
-                color:<?= match($u['role']){'superadmin'=>'#ef4444','admin'=>'#f59e0b','sales'=>'#3b82f6',default=>'#10b981'} ?>">
+                color:<?= match($u['role']){'superadmin'=>'#ef4444','owner'=>'#f59e0b','admin'=>'#3b82f6','sales'=>'#3b82f6',default=>'#10b981'} ?>">
                 <i class="bi <?= $u['icon'] ?? 'bi-person' ?>"></i>
               </div>
               <div>
@@ -87,9 +88,7 @@ include BASE_PATH . '/views/layouts/header.php';
                   "username"  => $u["username"],
                   "name"      => $u["name"],
                   "role"      => $u["role"],
-                  "branch"    => is_array($u["branch"] ?? null)
-                                   ? $u["branch"]
-                                   : ($u["branch"] ? [$u["branch"]] : []),
+                  "branch"    => $u["branch"] ?? "",
                   "active"    => $u["active"] ?? true,
                 ], JSON_HEX_APOS) ?>)'>
                 <i class="bi bi-pencil"></i>
@@ -103,19 +102,25 @@ include BASE_PATH . '/views/layouts/header.php';
 
               <?php if (!$isSelf && !$isSuperAdmin): ?>
               <!-- Bật/tắt -->
-              <a href="index.php?page=users&action=toggle&username=<?= urlencode($u['username']) ?>"
-                class="btn btn-sm <?= $isActive ? 'btn-outline-secondary' : 'btn-outline-success' ?>"
-                title="<?= $isActive ? 'Khóa tài khoản' : 'Kích hoạt' ?>"
-                onclick="return confirm('<?= $isActive ? 'Khóa tài khoản này?' : 'Kích hoạt tài khoản này?' ?>')">
-                <i class="bi <?= $isActive ? 'bi-lock' : 'bi-lock-fill' ?>"></i>
-              </a>
+              <form method="POST" action="index.php?page=users&action=toggle" class="d-inline"
+                onsubmit="return confirm('<?= $isActive ? 'Khóa tài khoản này?' : 'Kích hoạt tài khoản này?' ?>')">
+                <?= csrfField() ?>
+                <input type="hidden" name="username" value="<?= htmlspecialchars($u['username']) ?>">
+                <button type="submit" class="btn btn-sm <?= $isActive ? 'btn-outline-secondary' : 'btn-outline-success' ?>"
+                  title="<?= $isActive ? 'Khóa tài khoản' : 'Kích hoạt' ?>">
+                  <i class="bi <?= $isActive ? 'bi-lock' : 'bi-lock-fill' ?>"></i>
+                </button>
+              </form>
 
               <!-- Xóa -->
-              <a href="index.php?page=users&action=delete&username=<?= urlencode($u['username']) ?>"
-                class="btn btn-sm btn-outline-danger" title="Xóa tài khoản"
-                onclick="return confirm('Xóa tài khoản \'<?= htmlspecialchars($u['name']) ?>\'? Hành động này không thể hoàn tác!')">
-                <i class="bi bi-trash"></i>
-              </a>
+              <form method="POST" action="index.php?page=users&action=delete" class="d-inline"
+                onsubmit="return confirm('Xóa tài khoản \'<?= htmlspecialchars($u['name']) ?>\'? Hành động này không thể hoàn tác!')">
+                <?= csrfField() ?>
+                <input type="hidden" name="username" value="<?= htmlspecialchars($u['username']) ?>">
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa tài khoản">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
               <?php endif; ?>
             </div>
           </td>
@@ -164,6 +169,7 @@ include BASE_PATH . '/views/layouts/header.php';
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form method="POST" action="index.php?page=users&action=save">
+        <?= csrfField() ?>
         <input type="hidden" name="action_type" value="add">
         <div class="modal-body">
           <div class="row g-3">
@@ -194,27 +200,19 @@ include BASE_PATH . '/views/layouts/header.php';
               <select name="role" class="form-select" onchange="onRoleChange(this,'addBranch')" required>
                 <option value="">-- Chọn vai trò --</option>
                 <?php foreach ($roles as $rKey => $rInfo): ?>
-                  <?php if ($rKey === 'superadmin') continue; // Không cho tạo superadmin mới ?>
+                  <?php if ($rKey === 'superadmin') continue; ?>
                   <option value="<?= $rKey ?>"><?= $rInfo['label'] ?></option>
                 <?php endforeach; ?>
               </select>
             </div>
             <div class="col-6" id="addBranchWrap">
-              <label class="form-label">Chi nhánh <span id="addBranchHint" style="font-size:11px;color:#9ca3af">(Sales: bắt buộc chọn)</span></label>
-              <div style="border:1.5px solid #e5e7eb;border-radius:8px;padding:10px 12px;background:#f9fafb" id="addBranchBox">
-                <div style="font-size:12px;color:#9ca3af;margin-bottom:6px">Chọn chi nhánh được phép truy cập:</div>
+              <label class="form-label">Chi nhánh</label>
+              <select name="branch" id="addBranch" class="form-select">
+                <option value="">-- Tất cả chi nhánh --</option>
                 <?php foreach ($branches as $bId => $b): ?>
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" name="branch[]"
-                    value="<?= $bId ?>" id="add_br_<?= $bId ?>">
-                  <label class="form-check-label" for="add_br_<?= $bId ?>" style="font-size:13.5px">
-                    <i class="bi <?= $b['icon'] ?> me-1 text-<?= $b['color'] ?>"></i>
-                    <?= htmlspecialchars($b['name']) ?>
-                  </label>
-                </div>
+                <option value="<?= $bId ?>"><?= htmlspecialchars($b['name']) ?></option>
                 <?php endforeach; ?>
-                <div class="form-text mt-1">Admin/Warehouse: để trống = toàn bộ chi nhánh</div>
-              </div>
+              </select>
             </div>
           </div>
         </div>
@@ -238,6 +236,7 @@ include BASE_PATH . '/views/layouts/header.php';
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form method="POST" action="index.php?page=users&action=save">
+        <?= csrfField() ?>
         <input type="hidden" name="action_type" value="edit">
         <input type="hidden" name="id_edit" id="editIdEdit">
         <div class="modal-body">
@@ -261,19 +260,12 @@ include BASE_PATH . '/views/layouts/header.php';
             </div>
             <div class="col-6">
               <label class="form-label">Chi nhánh</label>
-              <div style="border:1.5px solid #e5e7eb;border-radius:8px;padding:10px 12px;background:#f9fafb" id="editBranchBox">
+              <select name="branch" id="editBranch" class="form-select">
+                <option value="">-- Tất cả chi nhánh --</option>
                 <?php foreach ($branches as $bId => $b): ?>
-                <div class="form-check">
-                  <input class="form-check-input edit-branch-chk" type="checkbox"
-                    name="branch[]" value="<?= $bId ?>" id="edit_br_<?= $bId ?>">
-                  <label class="form-check-label" for="edit_br_<?= $bId ?>" style="font-size:13.5px">
-                    <i class="bi <?= $b['icon'] ?> me-1 text-<?= $b['color'] ?>"></i>
-                    <?= htmlspecialchars($b['name']) ?>
-                  </label>
-                </div>
+                <option value="<?= $bId ?>"><?= htmlspecialchars($b['name']) ?></option>
                 <?php endforeach; ?>
-                <div class="form-text">Admin/Warehouse: để trống = toàn bộ</div>
-              </div>
+              </select>
             </div>
             <div class="col-6">
               <label class="form-label">Trạng thái</label>
@@ -302,6 +294,7 @@ include BASE_PATH . '/views/layouts/header.php';
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form method="POST" action="index.php?page=users&action=reset_password">
+        <?= csrfField() ?>
         <input type="hidden" name="username" id="resetUsername">
         <div class="modal-body">
           <div class="mb-3">
@@ -345,19 +338,8 @@ function openEditModal(u) {
   document.getElementById('editUsernameDisplay').textContent = u.username;
   document.getElementById('editName').value                 = u.name;
   document.getElementById('editRole').value                 = u.role;
+  document.getElementById('editBranch').value               = u.branch || '';
   document.getElementById('editActive').value               = u.active ? '1' : '0';
-
-  // Chuẩn hóa branch thành array (có thể là string cũ hoặc array mới)
-  let branches = [];
-  if (u.branch) {
-    branches = Array.isArray(u.branch) ? u.branch : [u.branch];
-  }
-
-  // Tick đúng checkbox chi nhánh
-  document.querySelectorAll('.edit-branch-chk').forEach(chk => {
-    chk.checked = branches.includes(chk.value);
-  });
-
   _modal('editUserModal').show();
 }
 

@@ -9,7 +9,7 @@ include BASE_PATH . '/views/layouts/header.php';
 ?>
 
 <style>
-/* ── Layout POS sticky ─────────────────────────────────────── */
+/* â”€â”€ Layout POS sticky â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .pos-wrap {
   display: flex;
   flex-direction: column;
@@ -137,6 +137,7 @@ include BASE_PATH . '/views/layouts/header.php';
 
 <form method="POST" action="index.php?page=invoice&branch=<?= $reqBranch ?>"
       onsubmit="return invoiceSubmit(event)" id="invoiceForm">
+  <?= csrfField() ?>
   <input type="hidden" name="action"  value="create_invoice">
   <input type="hidden" name="branch"  value="<?= $reqBranch ?>">
   <input type="hidden" name="items"   id="invoiceItemsJson">
@@ -215,7 +216,7 @@ include BASE_PATH . '/views/layouts/header.php';
               <i class="bi bi-cash me-1 text-success"></i>Phí vận chuyển (₫)
             </label>
             <input type="number" name="shipping_fee" id="inpShippingFee"
-              class="form-control form-control-sm" min="0" step="1000" value="0"
+              class="form-control form-control-sm" min="0" step="10" value="0"
               onfocus="this.select()" oninput="updateTotals()">
           </div>
           <div class="col-md-3 d-flex align-items-end gap-2">
@@ -307,9 +308,9 @@ include BASE_PATH . '/views/layouts/header.php';
                 <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#9ca3af"><?= htmlspecialchars($p['code']) ?></span>
                 <span style="font-size:11px;font-weight:700;color:<?= $low ? '#ef4444' : '#10b981' ?>">
                   <?= number_format($p['stock'] ?? 0, 2, ',', '.') ?> <?= htmlspecialchars($p['unit']) ?>
-                  <?= $low ? '⚠' : '' ?>
+                  <?= $low ? 'âš ' : '' ?>
                 </span>
-                <span style="font-size:11px;font-weight:700;color:#f59e0b"><?= number_format($p['price_out'] ?? 0, 0, ',', '.') ?>₫</span>
+                <span style="font-size:11px;font-weight:700;color:#f59e0b"><?= number_format($p['price_out'] ?? 0, 0, ',', '.') ?>â‚«</span>
               </div>
             </div>
             <?php endforeach; ?>
@@ -369,7 +370,7 @@ include BASE_PATH . '/views/layouts/header.php';
                 Phí vận chuyển: <span id="shippingDisplay" style="color:#10b981;font-weight:600">0 ₫</span>
               </div>
               <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Tổng cộng</div>
-              <div id="invoiceTotal" style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:#f59e0b">0 ₫</div>
+              <div id="invoiceTotal" style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:#f59e0b">0 â‚«</div>
             </div>
             <button type="submit" class="btn btn-primary btn-lg px-4" style="white-space:nowrap">
               <i class="bi bi-check2-circle me-2"></i>Xuất Hóa Đơn
@@ -388,7 +389,7 @@ const PRODUCTS = <?= json_encode(array_values($allProducts), JSON_UNESCAPED_UNIC
 let invoiceItems = [];
 let accOpen = false;
 
-// ── Accordion ─────────────────────────────────────────────────
+// â”€â”€ Accordion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function toggleAccordion() {
   const body = document.getElementById('accBody');
   const tog  = document.getElementById('accToggle');
@@ -595,7 +596,7 @@ function showColorPicker(p) {
         </div>
         <div style="font-size:12px;color:#6b7280;margin-top:2px">
           Phụ thu: <span style="color:#7c3aed;font-weight:700">+${fmtM(sc.surcharge)}</span>
-          &nbsp;→&nbsp;
+          &nbsp;â†’&nbsp;
           <b style="color:#7c3aed;font-size:13px">${fmtM(finalPrice)}</b>
         </div>
       </div>`;
@@ -710,7 +711,7 @@ function renderItems() {
       </div>
       <div>
         <input type="number" class="form-control form-control-sm" style="text-align:right"
-          min="0" step="1000" value="${item.price_out}"
+          min="0" step="10" value="${item.price_out}"
           onfocus="this.select()"
           onchange="setPrice('${esc(item.code)}',this.value)">
       </div>

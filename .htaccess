@@ -16,6 +16,12 @@ Options -Indexes
     Allow from all
 </FilesMatch>
 
+# Block archived PHP files from direct access
+<FilesMatch "\.old[0-9]*\.php$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
 # Allow index.php only
 DirectoryIndex index.php
 

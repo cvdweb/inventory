@@ -268,18 +268,17 @@ function printPriceList() {
 
   // Sinh HTML bảng từng nhóm
   let tablesHtml = '';
-  GROUPS.forEach(group => {
+  GROUPS.forEach((group, groupIndex) => {
     if (!group.products.length) return;
     const rows = group.products.map((p, idx) => {
       const hasSpecial = p.special_colors && p.special_colors.length > 0;
       // Dòng sản phẩm gốc
       let html = `<tr>
         <td style="text-align:center;color:#777">${idx+1}</td>
-        <td style="font-family:'Courier New',monospace;font-size:10.5pt">${_esc(p.code||'')}</td>
-        <td style="font-weight:bold">${_esc(p.name||'')}${hasSpecial?'<span style="font-size:9.5pt;color:#7c3aed;font-weight:normal;margin-left:6px">(màu thường)</span>':''}</td>
+        <td style="font-weight:bold">${_esc(p.name||'')}${hasSpecial?'<span class="variant-tag">màu thường</span>':''}</td>
         <td style="text-align:center">${_esc(p.unit||'')}</td>
         <td style="text-align:right;font-weight:bold;font-size:13pt">${_fmtPrice(p.price_out)}</td>
-        <td></td>
+        <td class="price-note">${hasSpecial ? 'Theo màu' : 'Theo thị trường'}</td>
       </tr>`;
       // Dòng màu đặc biệt
       if (hasSpecial) {
@@ -287,16 +286,13 @@ function printPriceList() {
           const finalPrice = (parseFloat(p.price_out)||0) + (parseFloat(sc.surcharge)||0);
           html += `<tr style="background:#faf5ff">
             <td></td>
-            <td style="font-family:'Courier New',monospace;font-size:10pt;color:#7c3aed;padding-left:12pt">
-              ${sc.code ? _esc(sc.code) : ''}
-            </td>
             <td style="padding-left:20pt;color:#5b21b6">
-              <span style="margin-right:4pt">â†³</span>${_esc(sc.name)}
-              <span style="font-size:9.5pt;color:#9ca3af;margin-left:6px">+ ${_fmtPrice(sc.surcharge)}</span>
+              <span style="margin-right:4pt">&rdsh;</span>${_esc(sc.name)}
+              ${sc.code ? `<span class="variant-code">${_esc(sc.code)}</span>` : ''}
             </td>
             <td style="text-align:center;color:#777">${_esc(p.unit||'')}</td>
             <td style="text-align:right;font-weight:bold;font-size:13pt;color:#7c3aed">${_fmtPrice(finalPrice)}</td>
-            <td></td>
+            <td class="price-note">+ ${_fmtPrice(sc.surcharge)}</td>
           </tr>`;
         });
       }
@@ -305,15 +301,18 @@ function printPriceList() {
 
     tablesHtml += `
       <div class="group-block">
-        <div class="group-title">${_esc(group.name)}</div>
+        <div class="group-title">
+          <span class="group-index">${String(groupIndex + 1).padStart(2, '0')}</span>
+          <span class="group-name">${_esc(group.name)}</span>
+          <span class="group-count">${group.products.length} sản phẩm</span>
+        </div>
         <table>
           <thead><tr>
             <th style="width:32px;text-align:center">STT</th>
-            <th style="width:90px">Mã SP</th>
             <th>Tên sản phẩm</th>
             <th style="width:55px;text-align:center">ĐVT</th>
             <th style="width:120px;text-align:right">Giá bán</th>
-            <th style="width:80px;text-align:center">Ghi chú</th>
+            <th style="width:115px;text-align:center">Giá biến động</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -343,13 +342,65 @@ function printPriceList() {
   .doc-date   { text-align: center; font-size: 10pt; color: #666; margin-bottom: 5mm; }
 
   /* Nhóm hàng */
-  .group-block { margin-bottom: 6mm; break-inside: avoid; }
+  .group-block {
+    margin-bottom: 6mm;
+    break-inside: avoid;
+    border: 1px solid #cbd5e1;
+    border-radius: 2mm;
+    overflow: hidden;
+  }
   .group-title {
+    display: flex;
+    align-items: center;
+    gap: 3mm;
     font-size: 13pt; font-weight: bold;
-    background: #1e293b; color: #fff;
-    padding: 2.5mm 4mm; border-radius: 1.5mm;
-    margin-bottom: 0;
+    background: #0f172a; color: #fff;
+    padding: 2.8mm 4mm;
     letter-spacing: .5px;
+  }
+  .group-index {
+    width: 9mm;
+    height: 9mm;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    color: #0f172a;
+    font-size: 9.5pt;
+    font-weight: bold;
+    letter-spacing: 0;
+  }
+  .group-name { flex: 1; text-transform: uppercase; }
+  .group-count {
+    border: 1px solid rgba(255,255,255,.55);
+    border-radius: 999px;
+    padding: 1mm 2.5mm;
+    font-size: 9.5pt;
+    font-weight: normal;
+    letter-spacing: 0;
+  }
+  .variant-tag {
+    display: inline-block;
+    margin-left: 6px;
+    padding: .5mm 1.8mm;
+    border-radius: 999px;
+    background: #ede9fe;
+    color: #6d28d9;
+    font-size: 9.5pt;
+    font-weight: normal;
+  }
+  .variant-code {
+    margin-left: 6px;
+    color: #7c3aed;
+    font-size: 9.5pt;
+    font-family: 'Courier New', monospace;
+  }
+  .price-note {
+    text-align: center;
+    color: #475569;
+    font-size: 10.5pt;
+    font-weight: 600;
   }
 
   /* Bảng */

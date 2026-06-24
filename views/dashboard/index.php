@@ -5,20 +5,69 @@ include BASE_PATH . '/views/layouts/header.php';
 $user      = currentUser();
 $branches  = getAccessibleBranches();
 $allStats  = [];
+$cashbookMonth = date('Y_m');
 foreach ($branches as $bId => $b) {
-    $allStats[$bId] = ['info' => $b, 'stats' => getDashboardStats($bId)];
+    if (function_exists('cashbookSyncReceivablePayments')) {
+        cashbookSyncReceivablePayments($bId, $cashbookMonth);
+    }
+    $cashbookEntries = function_exists('getCashbookEntries') ? getCashbookEntries($bId, $cashbookMonth) : [];
+    $allStats[$bId] = [
+        'info' => $b,
+        'stats' => getDashboardStats($bId),
+        'cashbook' => function_exists('cashbookSummary') ? cashbookSummary($cashbookEntries) : ['income' => 0, 'expense' => 0, 'balance' => 0, 'count' => 0],
+    ];
 }
 
 // Tổng hợp
 $totalOrders  = array_sum(array_column(array_column($allStats, 'stats'), 'today_orders'));
 $totalRevenue = array_sum(array_column(array_column($allStats, 'stats'), 'today_revenue'));
 $totalLow     = array_sum(array_column(array_column($allStats, 'stats'), 'low_stock'));
+$totalCashIncome = array_sum(array_column(array_column($allStats, 'cashbook'), 'income'));
+$totalCashExpense = array_sum(array_column(array_column($allStats, 'cashbook'), 'expense'));
+$totalCashBalance = $totalCashIncome - $totalCashExpense;
+$totalCashCount = array_sum(array_column(array_column($allStats, 'cashbook'), 'count'));
+$license      = licenseGet();
+$licenseStatus = licenseStatus($license);
+$licensePayments = $license['payments'] ?? [];
+$lastLicensePayment = !empty($licensePayments) ? end($licensePayments) : null;
+$licensePackageLabel = $lastLicensePayment
+    ? ((int)($lastLicensePayment['package_months'] ?? 0) . ' tháng')
+    : 'Chưa thanh toán';
+if ($lastLicensePayment && (int)($lastLicensePayment['free_months'] ?? 0) > 0) {
+    $licensePackageLabel .= ' (giảm phí ' . (int)$lastLicensePayment['free_months'] . ' tháng)';
+}
+$dashboardFeatureProfile = featureProfileInfo();
 ?>
 
 <div class="page-header d-flex align-items-center justify-content-between">
   <div>
     <h2><i class="bi bi-grid-1x2-fill me-2 text-amber"></i>Dashboard</h2>
     <p>Tổng quan hệ thống — <?= date('d/m/Y') ?></p>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body py-3">
+    <div class="row g-3 align-items-center">
+      <div class="col-md-3">
+        <div class="text-muted" style="font-size:11px;font-weight:800;text-transform:uppercase">Chế độ sử dụng</div>
+        <div class="fw-800"><?= htmlspecialchars($dashboardFeatureProfile['label']) ?> <span class="text-muted fw-600">· <?= htmlspecialchars($licensePackageLabel) ?></span></div>
+      </div>
+      <div class="col-md-3">
+        <div class="text-muted" style="font-size:11px;font-weight:800;text-transform:uppercase">Ngày bắt đầu tính phí</div>
+        <div class="fw-800"><?= date('d/m/Y', strtotime($license['customer']['started_at'] ?? date('Y-m-d'))) ?></div>
+      </div>
+      <div class="col-md-3">
+        <div class="text-muted" style="font-size:11px;font-weight:800;text-transform:uppercase">Ngày hết hạn</div>
+        <div class="fw-800"><?= date('d/m/Y', strtotime($licenseStatus['end_date'])) ?></div>
+      </div>
+      <div class="col-md-3">
+        <div class="text-muted" style="font-size:11px;font-weight:800;text-transform:uppercase">Còn lại</div>
+        <div class="fw-800 <?= $licenseStatus['days_remaining'] < 0 ? 'text-danger' : ($licenseStatus['days_remaining'] <= 15 ? 'text-warning' : 'text-success') ?>">
+          <?= (int)$licenseStatus['days_remaining'] ?> ngày
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -58,9 +107,46 @@ $totalLow     = array_sum(array_column(array_column($allStats, 'stats'), 'low_st
   </div>
 </div>
 
+<?php if(featureEnabled('cashbook')): ?><!-- Thu chi tháng này -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-green">
+      <div class="stat-icon"><i class="bi bi-arrow-down-circle"></i></div>
+      <div class="stat-value" style="font-size:18px"><?= formatMoney($totalCashIncome) ?></div>
+      <div class="stat-label">Thu tháng này</div>
+      <div class="stat-bg"><i class="bi bi-arrow-down-circle"></i></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-red">
+      <div class="stat-icon"><i class="bi bi-arrow-up-circle"></i></div>
+      <div class="stat-value" style="font-size:18px"><?= formatMoney($totalCashExpense) ?></div>
+      <div class="stat-label">Chi tháng này</div>
+      <div class="stat-bg"><i class="bi bi-arrow-up-circle"></i></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-amber">
+      <div class="stat-icon"><i class="bi bi-wallet2"></i></div>
+      <div class="stat-value <?= $totalCashBalance < 0 ? 'text-danger' : '' ?>" style="font-size:18px"><?= formatMoney($totalCashBalance) ?></div>
+      <div class="stat-label">Chênh lệch thu chi</div>
+      <div class="stat-bg"><i class="bi bi-wallet2"></i></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-blue">
+      <div class="stat-icon"><i class="bi bi-list-check"></i></div>
+      <div class="stat-value"><?= (int)$totalCashCount ?></div>
+      <div class="stat-label">Phiếu thu/chi</div>
+      <div class="stat-bg"><i class="bi bi-list-check"></i></div>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
+
 <!-- Chi nhánh -->
 <div class="row g-3 mb-4">
-<?php foreach ($allStats as $bId => $bs): $b = $bs['info']; $s = $bs['stats']; ?>
+<?php foreach ($allStats as $bId => $bs): $b = $bs['info']; $s = $bs['stats']; $cb = $bs['cashbook']; ?>
 <div class="col-md-6">
   <div class="card h-100">
     <div class="card-header d-flex align-items-center gap-2">
@@ -96,23 +182,49 @@ $totalLow     = array_sum(array_column(array_column($allStats, 'stats'), 'low_st
         </div>
       </div>
 
+      <?php if(featureEnabled('cashbook')): ?><div class="p-3 rounded-3 mb-3" style="background:#f9fafb;border:1px solid #e5e7eb">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="fw-800" style="font-size:12px"><i class="bi bi-cash-stack me-1"></i>Thu chi tháng này</div>
+          <span class="text-muted" style="font-size:11px"><?= (int)$cb['count'] ?> phiếu</span>
+        </div>
+        <div class="row g-2 text-center">
+          <div class="col-4">
+            <div class="text-muted" style="font-size:10.5px">Thu</div>
+            <div class="fw-800 text-success" style="font-size:12px"><?= formatMoney($cb['income']) ?></div>
+          </div>
+          <div class="col-4">
+            <div class="text-muted" style="font-size:10.5px">Chi</div>
+            <div class="fw-800 text-danger" style="font-size:12px"><?= formatMoney($cb['expense']) ?></div>
+          </div>
+          <div class="col-4">
+            <div class="text-muted" style="font-size:10.5px">Lệch</div>
+            <div class="fw-800 <?= $cb['balance'] < 0 ? 'text-danger' : 'text-success' ?>" style="font-size:12px"><?= formatMoney($cb['balance']) ?></div>
+          </div>
+        </div>
+      </div><?php endif; ?>
+
       <div class="d-flex gap-2 flex-wrap">
         <a href="index.php?page=products&branch=<?= $bId ?>" class="btn btn-sm btn-outline-primary">
           <i class="bi bi-box2"></i> Sản phẩm
         </a>
-        <?php if (in_array($user['role'], ['admin','warehouse'])): ?>
+        <?php if (in_array($user['role'], ['superadmin','admin','employee'], true)): ?>
         <a href="index.php?page=imports&branch=<?= $bId ?>" class="btn btn-sm btn-outline-secondary">
           <i class="bi bi-download"></i> Nhập hàng
         </a>
         <?php endif; ?>
-        <?php if (in_array($user['role'], ['admin','sales'])): ?>
+        <?php if (in_array($user['role'], ['superadmin','admin','employee'], true)): ?>
         <a href="index.php?page=invoice&branch=<?= $bId ?>" class="btn btn-sm btn-primary">
           <i class="bi bi-receipt"></i> Lập hóa đơn
         </a>
         <?php endif; ?>
+        <?php if (in_array($user['role'], ['superadmin','admin'], true) && featureEnabled('reports')): ?>
         <a href="index.php?page=reports&branch=<?= $bId ?>" class="btn btn-sm btn-outline-success">
           <i class="bi bi-bar-chart"></i> Báo cáo
         </a>
+        <?php endif; ?>
+        <?php if(featureEnabled('cashbook')): ?><a href="index.php?page=cashbook&branch=<?= $bId ?>&ym=<?= urlencode($cashbookMonth) ?>" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-cash-stack"></i> Thu chi
+        </a><?php endif; ?>
       </div>
     </div>
   </div>

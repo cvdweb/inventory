@@ -7,16 +7,12 @@ define('USERS_FILE', DATA_PATH . '/users.json');
 
 // Các role hệ thống
 define('ROLES', [
-    'superadmin' => ['label' => 'Kỹ Thuật (Bạn)',  'icon' => 'bi-shield-fill-check', 'color' => 'danger',
-                     'desc'  => 'Backup dữ liệu, quản lý tài khoản — không xem dữ liệu kinh doanh'],
-    'owner'      => ['label' => 'Chủ Cửa Hàng',    'icon' => 'bi-star-fill',         'color' => 'warning',
-                     'desc'  => 'Toàn quyền kinh doanh, xem báo cáo, quản lý sản phẩm và nhân viên'],
-    'admin'      => ['label' => 'Quản lý',          'icon' => 'bi-shield-check',      'color' => 'info',
-                     'desc'  => 'Quản lý sản phẩm, hóa đơn, báo cáo toàn chi nhánh'],
-    'sales'      => ['label' => 'Bán hàng',         'icon' => 'bi-person-badge',      'color' => 'primary',
-                     'desc'  => 'Lập hóa đơn bán hàng tại chi nhánh được gán'],
-    'warehouse'  => ['label' => 'Nhập hàng',        'icon' => 'bi-truck',             'color' => 'success',
-                     'desc'  => 'Nhập hàng, cập nhật tồn kho cho tất cả chi nhánh'],
+    'superadmin' => ['label' => 'Super Admin', 'icon' => 'bi-shield-fill-check', 'color' => 'danger',
+                     'desc' => 'Quản trị hệ thống, giấy phép, dữ liệu và hỗ trợ kỹ thuật'],
+    'admin'      => ['label' => 'Chủ Cửa Hàng', 'icon' => 'bi-star-fill', 'color' => 'warning',
+                     'desc' => 'Toàn quyền kinh doanh, tất cả chi nhánh và quản lý nhân viên'],
+    'employee'   => ['label' => 'Nhân Viên', 'icon' => 'bi-person-badge', 'color' => 'primary',
+                     'desc' => 'Thao tác nghiệp vụ tại các chi nhánh được phân công'],
 ]);
 
 /**
@@ -24,7 +20,53 @@ define('ROLES', [
  */
 function getAllUsers(): array
 {
-    return readJson(USERS_FILE);
+    $users = readJson(USERS_FILE);
+    $changed = false;
+
+    foreach ($users as &$user) {
+        $oldRole = (string)($user['role'] ?? '');
+        $branches = normalizeBranch($user['branch'] ?? null);
+        $newRole = match ($oldRole) {
+            'owner' => 'admin',
+            'sales', 'warehouse' => 'employee',
+            // Quản lý cũ có giới hạn chi nhánh không được tự động nâng thành chủ cửa hàng.
+            'admin' => empty($branches) ? 'admin' : 'employee',
+            'superadmin', 'employee' => $oldRole,
+            default => 'employee',
+        };
+        $newBranches = in_array($newRole, ['superadmin', 'admin'], true) ? null : $branches;
+        $newIcon = iconByRole($newRole);
+
+        if ($oldRole !== $newRole || ($user['branch'] ?? null) !== $newBranches || ($user['icon'] ?? '') !== $newIcon) {
+            $user['role'] = $newRole;
+            $user['branch'] = $newBranches;
+            $user['icon'] = $newIcon;
+            $user['updated_at'] = date('Y-m-d H:i:s');
+            $changed = true;
+        }
+    }
+    unset($user);
+
+    if ($changed) writeJson(USERS_FILE, $users);
+    return $users;
+}
+
+function canCreateUserRole(string $role): bool
+{
+    $actorRole = currentUser()['role'] ?? '';
+    if ($actorRole === 'superadmin') return in_array($role, ['admin', 'employee'], true);
+    return $actorRole === 'admin' && $role === 'employee';
+}
+
+function canManageTargetUser(array $target): bool
+{
+    $actor = currentUser();
+    $actorRole = $actor['role'] ?? '';
+    $targetRole = $target['role'] ?? '';
+    if (($target['username'] ?? '') === ($actor['username'] ?? '')) return false;
+    if ($targetRole === 'superadmin') return false;
+    if ($actorRole === 'superadmin') return true;
+    return $actorRole === 'admin' && $targetRole === 'employee';
 }
 
 /**
@@ -46,9 +88,36 @@ function saveUser(array $userData): array
     $users   = getAllUsers();
     $isNew   = empty($userData['id_edit']); // id_edit = username gốc khi edit
     $origKey = $userData['id_edit'] ?? $userData['username'];
+    $role    = $userData['role'] ?? '';
+    $branch  = normalizeBranch($userData['branch'] ?? null);
+
+    if (!isset(ROLES[$role])) {
+        return ['success' => false, 'message' => 'Vai trò không hợp lệ'];
+    }
+    if (!$isNew) {
+        $target = getUserByUsername($origKey);
+        if (!$target || !canManageTargetUser($target)) {
+            return ['success' => false, 'message' => 'Bạn không có quyền sửa tài khoản này'];
+        }
+    } elseif (!canCreateUserRole($role)) {
+        return ['success' => false, 'message' => 'Bạn không có quyền tạo tài khoản với vai trò này'];
+    }
+    if ($role === 'employee' && empty($branch)) {
+        return ['success' => false, 'message' => 'Vui lòng chọn ít nhất một chi nhánh cho tài khoản này'];
+    }
+    if ($role === 'admin') {
+        $branch = null;
+    }
 
     // Kiểm tra trùng username khi tạo mới
+    if (!$isNew && !empty($userData['password'])) {
+        $passwordError = passwordValidationError((string)$userData['password']);
+        if ($passwordError !== '') return ['success' => false, 'message' => $passwordError];
+    }
+
     if ($isNew) {
+        $passwordError = passwordValidationError((string)($userData['password'] ?? ''));
+        if ($passwordError !== '') return ['success' => false, 'message' => $passwordError];
         foreach ($users as $u) {
             if ($u['username'] === $userData['username']) {
                 return ['success' => false, 'message' => "Tên đăng nhập '{$userData['username']}' đã tồn tại"];
@@ -63,9 +132,9 @@ function saveUser(array $userData): array
             'username'   => $userData['username'],
             'password'   => hashPassword($userData['password']),
             'name'       => $userData['name'],
-            'role'       => $userData['role'],
-            'branch'     => normalizeBranch($userData['branch'] ?? null),
-            'icon'       => iconByRole($userData['role']),
+            'role'       => $role,
+            'branch'     => $branch,
+            'icon'       => iconByRole($role),
             'active'     => true,
             'created_at' => $now,
             'updated_at' => $now,
@@ -75,17 +144,10 @@ function saveUser(array $userData): array
         $found = false;
         foreach ($users as &$u) {
             if ($u['username'] === $origKey) {
-                // Không cho đổi username của superadmin
-                if ($u['role'] === 'superadmin' && $userData['role'] !== 'superadmin') {
-                    return ['success' => false, 'message' => 'Không thể thay đổi role của Super Admin'];
-                }
-                if ($userData['role'] === 'superadmin' && $u['role'] !== 'superadmin') {
-                    return ['success' => false, 'message' => 'Không thể gán role Kỹ Thuật cho tài khoản thông thường'];
-                }
                 $u['name']       = $userData['name'];
-                $u['role']       = $userData['role'];
-                $u['branch']     = normalizeBranch($userData['branch'] ?? null);
-                $u['icon']       = iconByRole($userData['role']);
+                $u['role']       = $role;
+                $u['branch']     = $branch;
+                $u['icon']       = iconByRole($role);
                 $u['active']     = isset($userData['active']) ? (bool)$userData['active'] : true;
                 $u['updated_at'] = $now;
                 // Đổi mật khẩu chỉ khi có nhập
@@ -108,10 +170,14 @@ function saveUser(array $userData): array
 /**
  * Reset mật khẩu
  */
-function resetPassword(string $username, string $newPassword): array
+function resetPassword(string $username, string $newPassword, bool $allowSelf = false): array
 {
-    if (strlen($newPassword) < 6) {
-        return ['success' => false, 'message' => 'Mật khẩu phải ít nhất 6 ký tự'];
+    $passwordError = passwordValidationError($newPassword);
+    if ($passwordError !== '') return ['success' => false, 'message' => $passwordError];
+    $target = getUserByUsername($username);
+    $isSelf = $target && ($target['username'] ?? '') === (currentUser()['username'] ?? '');
+    if (!$target || !($allowSelf && $isSelf) && !canManageTargetUser($target)) {
+        return ['success' => false, 'message' => 'Bạn không có quyền đặt lại mật khẩu tài khoản này'];
     }
     $users = getAllUsers();
     $found = false;
@@ -135,12 +201,13 @@ function resetPassword(string $username, string $newPassword): array
  */
 function toggleUserActive(string $username): array
 {
+    $target = getUserByUsername($username);
+    if (!$target || !canManageTargetUser($target)) {
+        return ['success' => false, 'message' => 'Bạn không có quyền thay đổi trạng thái tài khoản này'];
+    }
     $users = getAllUsers();
     foreach ($users as &$u) {
         if ($u['username'] === $username) {
-            if ($u['role'] === 'superadmin') {
-                return ['success' => false, 'message' => 'Không thể vô hiệu hóa tài khoản Super Admin'];
-            }
             $u['active']     = !($u['active'] ?? true);
             $u['updated_at'] = date('Y-m-d H:i:s');
             $status = $u['active'] ? 'kích hoạt' : 'vô hiệu hóa';
@@ -158,7 +225,7 @@ function deleteUser(string $username): array
 {
     $user = getUserByUsername($username);
     if (!$user) return ['success' => false, 'message' => 'Không tìm thấy người dùng'];
-    if ($user['role'] === 'superadmin') return ['success' => false, 'message' => 'Không thể xóa Super Admin'];
+    if (!canManageTargetUser($user)) return ['success' => false, 'message' => 'Bạn không có quyền xóa tài khoản này'];
 
     $users = array_values(array_filter(getAllUsers(), fn($u) => $u['username'] !== $username));
     $ok    = writeJson(USERS_FILE, $users);
@@ -184,6 +251,12 @@ function normalizeBranch($branch): ?array
     return empty($filtered) ? null : $filtered;
 }
 
+function branchesOverlap($a, array $b): bool
+{
+    $left = normalizeBranch($a) ?? [];
+    return !empty(array_intersect($left, $b));
+}
+
 /**
  * Icon theo role
  */
@@ -191,10 +264,8 @@ function iconByRole(string $role): string
 {
     return match($role) {
         'superadmin' => 'bi-shield-fill-check',
-        'owner'      => 'bi-star-fill',
-        'admin'      => 'bi-shield-check',
-        'sales'      => 'bi-person-badge',
-        'warehouse'  => 'bi-truck',
+        'admin'      => 'bi-star-fill',
+        'employee'   => 'bi-person-badge',
         default      => 'bi-person',
     };
 }

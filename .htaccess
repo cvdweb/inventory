@@ -10,6 +10,17 @@ Options -Indexes
     Deny from all
 </FilesMatch>
 
+# Backup chỉ được tải qua index.php sau khi xác thực
+<FilesMatch "^backup_.*\.zip$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Allow,Deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
 # Protect config files
 <FilesMatch "\.(php)$">
     Order Allow,Deny
@@ -24,6 +35,11 @@ Options -Indexes
 
 # Allow index.php only
 DirectoryIndex index.php
+
+# PWA assets
+AddType application/manifest+json .webmanifest
+AddType image/svg+xml .svg
+AddType application/javascript .js
 
 # Security headers
 <IfModule mod_headers.c>

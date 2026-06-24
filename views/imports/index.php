@@ -1,7 +1,7 @@
 <?php
-$reqBranch  = $_GET['branch'] ?? array_key_first(BRANCHES);
+$reqBranch  = $_GET['branch'] ?? firstAccessibleBranchId();
 if (!canAccessBranch($reqBranch)) { header('Location: index.php'); exit; }
-$branchInfo = BRANCHES[$reqBranch];
+$branchInfo = getBranchInfo($reqBranch);
 $categoriesRaw = getCategories($reqBranch, true);
 $categories = [];
 foreach ($categoriesRaw as $c2) { $categories[$c2['key']] = $c2; }
@@ -9,13 +9,18 @@ $products   = getAllProducts($reqBranch);
 $imports    = getImports($reqBranch);
 $pageTitle  = 'Nhập Hàng — ' . $branchInfo['name'];
 $preCode    = $_GET['product_code'] ?? '';
+$bulkEnabled = featureEnabled('bulk_import');
 include BASE_PATH . '/views/layouts/header.php';
 ?>
 
-<div class="page-header d-flex align-items-center gap-2">
+<div class="page-header d-flex align-items-center justify-content-between gap-2 flex-wrap">
   <div>
     <h2><i class="bi bi-download me-2 text-<?= $branchInfo['color'] ?>"></i>Nhập Hàng</h2>
     <p><?= htmlspecialchars($branchInfo['name']) ?> — Tháng <?= date('m/Y') ?></p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="index.php?page=help&topic=imports" class="btn btn-outline-secondary context-help-btn" title="Hướng dẫn nhập hàng"><i class="bi bi-question-circle"></i><span class="context-help-label">Hướng dẫn</span></a>
+    <?php if($bulkEnabled): ?><button type="button" class="btn btn-primary" onclick="bootstrap.Modal.getOrCreateInstance(document.getElementById('bulkImportModal')).show()"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Nhập hàng loạt</button><?php endif; ?>
   </div>
 </div>
 
@@ -63,7 +68,8 @@ include BASE_PATH . '/views/layouts/header.php';
 
         <div class="mb-3">
           <label class="form-label">Ngày nhập</label>
-          <input type="date" name="import_date" class="form-control" value="<?= date('Y-m-d') ?>">
+            <input type="hidden" name="import_date" id="importDateIso" value="<?= date('Y-m-d') ?>">
+            <input type="text" class="form-control" data-vn-date-target="importDateIso" value="<?= date('Y-m-d') ?>">
         </div>
 
         <div class="mb-3">
@@ -102,18 +108,24 @@ include BASE_PATH . '/views/layouts/header.php';
           <thead style="position:sticky;top:0;background:#fff;z-index:1">
             <tr><th>Phiếu</th><th>Sản phẩm</th><th>SL</th><th>Giá nhập</th><th>Thành tiền</th><th>Ngày</th></tr>
           </thead>
-          <tbody>
+          <tbody data-progressive-list data-progressive-initial="15" data-progressive-batch="15" data-progressive-controls="importHistoryMore">
           <?php if (empty($imports)): ?>
           <tr><td colspan="6"><div class="empty-state" style="padding:32px"><i class="bi bi-inbox"></i><p>Chưa có phiếu nhập</p></div></td></tr>
           <?php else: foreach (array_reverse($imports) as $imp): ?>
-          <tr>
+          <?php $bulkItems = $imp['items'] ?? []; $isBulk = !empty($imp['bulk']) && !empty($bulkItems); ?>
+          <tr data-progressive-item>
             <td><code style="font-size:10px"><?= htmlspecialchars(substr($imp['id'] ?? '', 0, 18)) ?></code></td>
             <td>
-              <div class="fw-600"><?= htmlspecialchars($imp['product_name'] ?? '') ?></div>
-              <div class="product-code"><?= htmlspecialchars($imp['product_code'] ?? '') ?></div>
+              <?php if ($isBulk): ?>
+                <div class="fw-600"><?= count($bulkItems) ?> mặt hàng <span class="badge bg-primary bg-opacity-10 text-primary">CSV</span></div>
+                <div class="product-code"><?= htmlspecialchars(implode(', ', array_slice(array_column($bulkItems, 'product_code'), 0, 3))) ?><?= count($bulkItems) > 3 ? '...' : '' ?></div>
+              <?php else: ?>
+                <div class="fw-600"><?= htmlspecialchars($imp['product_name'] ?? '') ?></div>
+                <div class="product-code"><?= htmlspecialchars($imp['product_code'] ?? '') ?></div>
+              <?php endif; ?>
             </td>
-            <td class="text-end fw-700"><?= number_format($imp['qty'] ?? 0, 2, ',', '.') ?> <?= htmlspecialchars($imp['unit'] ?? '') ?></td>
-            <td class="text-end"><?= formatMoney($imp['price_in'] ?? 0) ?></td>
+            <td class="text-end fw-700"><?= $isBulk ? number_format((float)($imp['total_qty'] ?? 0), 2, ',', '.') : number_format($imp['qty'] ?? 0, 2, ',', '.') . ' ' . htmlspecialchars($imp['unit'] ?? '') ?></td>
+            <td class="text-end"><?= $isBulk ? '—' : formatMoney($imp['price_in'] ?? 0) ?></td>
             <td class="text-end money fw-700 text-success"><?= formatMoney($imp['total_amount'] ?? 0) ?></td>
             <td><?= htmlspecialchars(substr($imp['import_date'] ?? $imp['created_at'] ?? '', 0, 10)) ?></td>
           </tr>
@@ -121,6 +133,7 @@ include BASE_PATH . '/views/layouts/header.php';
           </tbody>
         </table>
       </div>
+      <div id="importHistoryMore"></div>
     </div>
   </div>
 </div>
@@ -191,4 +204,6 @@ if (preCode) {
   }
 }
 </script>
+<?php if($bulkEnabled) include BASE_PATH . '/views/imports/bulk.php'; ?>
+
 <?php include BASE_PATH . '/views/layouts/footer.php'; ?>

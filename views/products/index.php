@@ -1,19 +1,31 @@
 <?php
-$reqBranch = $_GET['branch'] ?? array_key_first(BRANCHES);
+$reqBranch = $_GET['branch'] ?? firstAccessibleBranchId();
 if (!canAccessBranch($reqBranch)) {
     $_SESSION['flash'] = ['type'=>'danger','message'=>'Không có quyền truy cập chi nhánh này'];
     header('Location: index.php'); exit;
 }
 
-$branchInfo    = BRANCHES[$reqBranch];
+$branchInfo    = getBranchInfo($reqBranch);
 $category      = $_GET['cat'] ?? '';
 $search        = $_GET['q'] ?? '';
+$productStatus = $_GET['status'] ?? 'active';
 $categoriesRaw = getCategories($reqBranch, true);
 $categories    = [];
 foreach ($categoriesRaw as $c2) { $categories[$c2['key']] = $c2; }
-$products      = productList($reqBranch, $category, $search);
+$categoryUnits = [];
+$categoryCapabilities = [];
+foreach ($categories as $cKey => $cInfo) {
+    $categoryUnits[$cKey] = getCategoryUnits($reqBranch, $cKey);
+    $categoryCapabilities[$cKey] = $cInfo['capabilities'] ?? [];
+}
+$products      = productList($reqBranch, $category, $search, $productStatus !== 'active');
+if ($productStatus === 'archived') {
+    $products = array_values(array_filter($products, 'productIsArchived'));
+}
 $pageTitle     = 'Sản Phẩm — ' . $branchInfo['name'];
-$canManage     = in_array(currentUser()['role'], ['superadmin', 'admin']);
+$canManage     = in_array(currentUser()['role'], ['superadmin', 'admin'], true);
+$bulkEnabled   = featureEnabled('bulk_import');
+$bulkPreview   = $_SESSION['product_bulk_preview'] ?? null;
 include BASE_PATH . '/views/layouts/header.php';
 ?>
 
@@ -26,6 +38,11 @@ include BASE_PATH . '/views/layouts/header.php';
     <button class="btn btn-outline-secondary" onclick="printPriceList()">
       <i class="bi bi-printer me-1"></i>In Bảng Giá
     </button>
+    <?php if ($canManage && $bulkEnabled): ?>
+    <button class="btn btn-outline-primary" onclick="openBulkModal()">
+      <i class="bi bi-file-earmark-spreadsheet me-1"></i>Nhập CSV
+    </button>
+    <?php endif; ?>
     <?php if ($canManage): ?>
     <button class="btn btn-primary" onclick="openAddModal()">
       <i class="bi bi-plus-lg me-1"></i>Thêm Sản Phẩm
@@ -33,6 +50,90 @@ include BASE_PATH . '/views/layouts/header.php';
     <?php endif; ?>
   </div>
 </div>
+
+<?php if ($canManage && $bulkEnabled && $bulkPreview && ($bulkPreview['branch'] ?? '') === $reqBranch): ?>
+<?php
+  $validRows = $bulkPreview['valid'] ?? [];
+  $errorRows = $bulkPreview['errors'] ?? [];
+  $previewWarnings = $bulkPreview['warnings'] ?? [];
+?>
+<div class="card mb-3" style="border-left:4px solid #3b82f6">
+  <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+    <div>
+      <i class="bi bi-file-earmark-spreadsheet me-2 text-primary"></i>
+      Preview nhập CSV: <strong><?= htmlspecialchars($bulkPreview['categoryName'] ?? '') ?></strong>
+    </div>
+    <div class="d-flex gap-2">
+      <form method="POST" action="index.php?page=products&branch=<?= urlencode($reqBranch) ?>&action=bulk_cancel">
+        <?= csrfField() ?>
+        <button class="btn btn-sm btn-outline-secondary" type="submit">Hủy preview</button>
+      </form>
+      <form method="POST" action="index.php?page=products&branch=<?= urlencode($reqBranch) ?>&action=bulk_commit"
+        onsubmit="return confirm('Xác nhận nhập <?= count($validRows) ?> sản phẩm hợp lệ?')">
+        <?= csrfField() ?>
+        <button class="btn btn-sm btn-primary" type="submit" <?= empty($validRows) ? 'disabled' : '' ?>>
+          <i class="bi bi-check2-circle me-1"></i>Xác nhận nhập <?= count($validRows) ?> dòng
+        </button>
+      </form>
+    </div>
+  </div>
+  <div class="card-body">
+    <?php foreach ($previewWarnings as $warning): ?>
+    <div class="alert alert-warning py-2"><i class="bi bi-exclamation-triangle me-1"></i><?= htmlspecialchars($warning) ?></div>
+    <?php endforeach; ?>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="alert alert-success py-2 mb-2">
+          <strong><?= count($validRows) ?></strong> dòng hợp lệ, sẵn sàng nhập.
+        </div>
+        <div class="table-responsive" style="max-height:260px;overflow:auto">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Dòng</th><th>Mã</th><th>Tên</th><th>ĐVT</th><th class="text-end">Giá bán</th></tr></thead>
+            <tbody>
+            <?php foreach (array_slice($validRows, 0, 30) as $row): ?>
+              <tr>
+                <td><?= (int)$row['row'] ?></td>
+                <td><code><?= htmlspecialchars($row['code']) ?></code></td>
+                <td><?= htmlspecialchars($row['name']) ?></td>
+                <td><?= htmlspecialchars($row['unit']) ?></td>
+                <td class="text-end money"><?= formatMoney($row['price_out']) ?></td>
+              </tr>
+            <?php endforeach; ?>
+            <?php if (count($validRows) > 30): ?>
+              <tr><td colspan="5" class="text-muted text-center">Còn <?= count($validRows) - 30 ?> dòng hợp lệ khác...</td></tr>
+            <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="alert <?= empty($errorRows) ? 'alert-secondary' : 'alert-danger' ?> py-2 mb-2">
+          <strong><?= count($errorRows) ?></strong> dòng lỗi hoặc bị bỏ qua.
+        </div>
+        <div class="table-responsive" style="max-height:260px;overflow:auto">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Dòng</th><th>Mã</th><th>Lỗi</th></tr></thead>
+            <tbody>
+            <?php if (empty($errorRows)): ?>
+              <tr><td colspan="3" class="text-muted text-center">Không có lỗi.</td></tr>
+            <?php else: foreach (array_slice($errorRows, 0, 40) as $row): ?>
+              <tr>
+                <td><?= (int)$row['row'] ?></td>
+                <td><code><?= htmlspecialchars($row['code'] ?? '') ?></code></td>
+                <td><?= htmlspecialchars(implode('; ', $row['errors'] ?? [])) ?></td>
+              </tr>
+            <?php endforeach; endif; ?>
+            <?php if (count($errorRows) > 40): ?>
+              <tr><td colspan="3" class="text-muted text-center">Còn <?= count($errorRows) - 40 ?> dòng lỗi khác...</td></tr>
+            <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
 
 <!-- Filter bar -->
 <div class="card mb-3">
@@ -51,6 +152,13 @@ include BASE_PATH . '/views/layouts/header.php';
         <option value="<?= $cKey ?>" <?= $category === $cKey ? 'selected' : '' ?>><?= htmlspecialchars($cInfo['name']) ?></option>
         <?php endforeach; ?>
       </select>
+      <?php if ($canManage): ?>
+      <select name="status" class="form-select form-select-sm" style="width:150px">
+        <option value="active" <?= $productStatus === 'active' ? 'selected' : '' ?>>Đang kinh doanh</option>
+        <option value="archived" <?= $productStatus === 'archived' ? 'selected' : '' ?>>Đã lưu trữ</option>
+        <option value="all" <?= $productStatus === 'all' ? 'selected' : '' ?>>Tất cả</option>
+      </select>
+      <?php endif; ?>
       <button type="submit" class="btn btn-sm btn-primary">Lọc</button>
       <a href="index.php?page=products&branch=<?= $reqBranch ?>" class="btn btn-sm btn-outline-secondary">Đặt lại</a>
     </form>
@@ -68,7 +176,7 @@ include BASE_PATH . '/views/layouts/header.php';
           <th class="text-end">Tồn kho</th><th class="text-center">Trạng thái</th>
           <?php if ($canManage): ?><th class="text-center">Thao tác</th><?php endif; ?>
         </tr></thead>
-        <tbody>
+        <tbody data-progressive-list data-progressive-auto="true" data-progressive-label="sản phẩm" data-progressive-initial="25" data-progressive-batch="25" data-progressive-controls="productListMore">
         <?php if (empty($products)): ?>
         <tr><td colspan="9">
           <div class="empty-state">
@@ -81,8 +189,8 @@ include BASE_PATH . '/views/layouts/header.php';
             <?php endif; ?>
           </div>
         </td></tr>
-        <?php else: foreach ($products as $p): $lowStock = ($p['stock'] ?? 0) < ($p['min_stock'] ?? 5); ?>
-        <tr class="<?= $lowStock ? 'stock-low-row' : '' ?>">
+        <?php else: foreach ($products as $p): $archived = productIsArchived($p); $lowStock = !$archived && ($p['stock'] ?? 0) < ($p['min_stock'] ?? 5); ?>
+        <tr class="<?= $lowStock ? 'stock-low-row' : '' ?>" <?= $archived ? 'style="opacity:.72;background:#f8fafc"' : '' ?> data-progressive-item>
           <td><code><?= htmlspecialchars($p['code'] ?? '') ?></code></td>
           <td class="fw-600"><?= htmlspecialchars($p['name'] ?? '') ?>
             <?php if (!empty($p['special_colors'])): ?>
@@ -99,7 +207,9 @@ include BASE_PATH . '/views/layouts/header.php';
             <?= number_format($p['stock'] ?? 0, 2, ',', '.') ?> <?= htmlspecialchars($p['unit'] ?? '') ?>
           </td>
           <td class="text-center">
-            <?php if ($lowStock): ?>
+            <?php if ($archived): ?>
+              <span class="badge bg-secondary"><i class="bi bi-archive me-1"></i>Đã lưu trữ</span>
+            <?php elseif ($lowStock): ?>
               <span class="badge bg-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>Sắp hết</span>
             <?php else: ?>
               <span class="badge bg-success bg-opacity-10 text-success">Bình thường</span>
@@ -107,6 +217,7 @@ include BASE_PATH . '/views/layouts/header.php';
           </td>
           <?php if ($canManage): ?>
           <td class="text-center">
+            <?php if (!$archived): ?>
             <button class="btn btn-sm btn-outline-primary"
               onclick='openEditModal(<?= json_encode([
                 "id"             => $p["id"],
@@ -123,10 +234,20 @@ include BASE_PATH . '/views/layouts/header.php';
               <i class="bi bi-pencil"></i>
             </button>
             <form method="POST" action="index.php?page=products&branch=<?= $reqBranch ?>&action=delete&id=<?= urlencode($p['id'] ?? '') ?>&cat=<?= urlencode($p['category_key'] ?? '') ?>" class="d-inline"
-               onsubmit="return confirm('Xóa sản phẩm \'<?= htmlspecialchars(addslashes($p['name'] ?? '')) ?>\'?')">
+               data-product-name="<?= htmlspecialchars($p['name'] ?? '', ENT_QUOTES) ?>"
+               data-product-action="archive" onsubmit="return confirmProductAction(this)">
               <?= csrfField() ?>
-              <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+              <input type="hidden" name="reason" value="Ngừng kinh doanh">
+              <button type="submit" class="btn btn-sm btn-outline-danger" title="Ngừng kinh doanh"><i class="bi bi-archive"></i></button>
             </form>
+            <?php else: ?>
+            <form method="POST" action="index.php?page=products&branch=<?= $reqBranch ?>&action=restore&id=<?= urlencode($p['id'] ?? '') ?>&cat=<?= urlencode($p['category_key'] ?? '') ?>" class="d-inline"
+              data-product-name="<?= htmlspecialchars($p['name'] ?? '', ENT_QUOTES) ?>"
+              data-product-action="restore" onsubmit="return confirmProductAction(this)">
+              <?= csrfField() ?>
+              <button type="submit" class="btn btn-sm btn-outline-primary" title="Khôi phục"><i class="bi bi-arrow-counterclockwise"></i></button>
+            </form>
+            <?php endif; ?>
           </td>
           <?php endif; ?>
         </tr>
@@ -134,9 +255,80 @@ include BASE_PATH . '/views/layouts/header.php';
         </tbody>
       </table>
     </div>
+    <div id="productListMore"></div>
   </div>
 </div>
 
+<?php if ($canManage && $bulkEnabled): ?>
+<!-- Modal Nhập CSV -->
+<div class="modal fade" id="bulkImportModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-file-earmark-spreadsheet me-2 text-primary"></i>Nhập Sản Phẩm Hàng Loạt</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" enctype="multipart/form-data" action="index.php?page=products&branch=<?= urlencode($reqBranch) ?>&action=bulk_preview">
+        <?= csrfField() ?>
+        <div class="modal-body">
+          <div class="alert alert-info py-2">
+            Hệ thống sẽ đọc file và hiển thị preview trước. Chỉ các dòng hợp lệ mới được nhập sau khi bạn xác nhận.
+          </div>
+          <div class="row g-3">
+            <div class="col-md-5">
+              <label class="form-label">Nhóm hàng nhập vào *</label>
+              <select name="category" id="bulkCategory" class="form-select" required onchange="updateBulkTemplateLink()">
+                <option value="">-- Chọn nhóm --</option>
+                <?php foreach ($categories as $cKey => $cInfo): ?>
+                <option value="<?= htmlspecialchars($cKey) ?>" <?= $category === $cKey ? 'selected' : '' ?>>
+                  <?= htmlspecialchars($cInfo['name']) ?>
+                </option>
+                <?php endforeach; ?>
+              </select>
+              <div class="form-text">Đơn vị trong CSV phải thuộc nhóm đã chọn.</div>
+            </div>
+            <div class="col-md-7">
+              <label class="form-label">File CSV *</label>
+              <input type="file" name="csv_file" class="form-control" accept=".csv,text/csv" required>
+              <div class="form-text">Nên lưu CSV dạng UTF-8 để tiếng Việt hiển thị đúng.</div>
+            </div>
+            <div class="col-12">
+              <a class="btn btn-sm btn-outline-primary" id="bulkTemplateLink" href="#" target="_blank">
+                <i class="bi bi-download me-1"></i>Tải file mẫu CSV cho nhóm đã chọn
+              </a>
+              <div class="form-text mt-2" id="bulkCapabilityHint">File mẫu sẽ thay đổi theo tính năng của nhóm hàng.</div>
+            </div>
+            <div class="col-12">
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered mb-0">
+                  <thead>
+                    <tr>
+                      <th>Mã SP</th><th>Tên sản phẩm</th><th>Đơn vị</th><th>Giá nhập</th>
+                      <th>Giá bán</th><th>Tồn kho ban đầu</th><th>Tồn kho tối thiểu</th><th class="bulk-color-column">Màu đặc biệt</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><code>XM001</code></td><td>Xi măng Hà Tiên</td><td>bao</td><td>80000</td>
+                      <td>90000</td><td>100</td><td>10</td><td class="bulk-color-column">Đỏ:+20000; Xanh:+15000</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-eye me-1"></i>Đọc file & xem preview
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
 <?php if ($canManage): ?>
 <!-- Modal Thêm / Sửa Sản Phẩm -->
 <div class="modal fade" id="productModal" tabindex="-1">
@@ -175,10 +367,9 @@ include BASE_PATH . '/views/layouts/header.php';
             <div class="col-md-4">
               <label class="form-label">Đơn vị tính *</label>
               <select name="unit" id="pUnit" class="form-select" required>
-                <?php foreach (UNITS as $u): ?>
-                <option value="<?= $u ?>"><?= $u ?></option>
-                <?php endforeach; ?>
+                <option value="">-- Chọn nhóm trước --</option>
               </select>
+              <div class="form-text">Đơn vị lấy theo nhóm hàng đã chọn</div>
             </div>
             <div class="col-md-4">
               <label class="form-label">Tồn kho tối thiểu</label>
@@ -191,12 +382,14 @@ include BASE_PATH . '/views/layouts/header.php';
               <label class="form-label">Giá nhập (₫)</label>
               <input type="number" name="price_in" id="pPriceIn" class="form-control" onfocus="this.select()"
                 value="0" min="0" step="1">
+              <div class="form-text">Không bắt buộc chênh lệch lớn với giá bán</div>
             </div>
             <div class="col-md-4">
               <label class="form-label">Giá bán (₫) *</label>
               <input type="number" name="price_out" id="pPriceOut" class="form-control" onfocus="this.select()"
                 value="0" min="0" step="1" required
                 oninput="recalcAllSurcharges()">
+              <div class="form-text">Ví dụ: nhập 2.400, bán 2.600 vẫn hợp lệ</div>
             </div>
             <div class="col-md-4">
               <label class="form-label">Tồn kho ban đầu</label>
@@ -206,7 +399,7 @@ include BASE_PATH . '/views/layouts/header.php';
             </div>
 
             <!-- Màu đặc biệt (phụ thu thêm) -->
-            <div class="col-12">
+            <div class="col-12" id="specialColorsSection" hidden>
               <div style="border:1.5px dashed #e5e7eb;border-radius:8px;padding:14px 16px;background:#fafafa">
                 <div class="d-flex align-items-center justify-content-between mb-2">
                   <label class="form-label mb-0" style="color:#6b7280">
@@ -239,7 +432,76 @@ include BASE_PATH . '/views/layouts/header.php';
   </div>
 </div>
 
+<!-- Modal xác nhận thao tác sản phẩm -->
+<div class="modal fade" id="productActionModal" tabindex="-1" aria-labelledby="productActionModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered product-action-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <div class="modal-kicker">QUẢN LÝ SẢN PHẨM</div>
+          <h5 class="modal-title" id="productActionModalTitle">Xác nhận thao tác</h5>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+      </div>
+      <div class="modal-body">
+        <div class="product-action-note">
+          <i class="bi bi-info-circle" id="productActionIcon"></i>
+          <div>
+            <strong id="productActionName">Sản phẩm</strong>
+            <span id="productActionMessage"></span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Quay lại</button>
+        <button type="button" class="btn" id="confirmProductActionButton"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<?php endif; ?>
+
 <script>
+let pendingProductActionForm = null;
+
+function confirmProductAction(form) {
+  if (form.dataset.actionConfirmed === '1') return true;
+
+  pendingProductActionForm = form;
+  const isRestore = form.dataset.productAction === 'restore';
+  const productName = form.dataset.productName || 'Sản phẩm';
+  const title = document.getElementById('productActionModalTitle');
+  const name = document.getElementById('productActionName');
+  const message = document.getElementById('productActionMessage');
+  const icon = document.getElementById('productActionIcon');
+  const confirmButton = document.getElementById('confirmProductActionButton');
+
+  name.textContent = productName;
+  title.textContent = isRestore ? 'Khôi phục sản phẩm' : 'Ngừng kinh doanh';
+  message.textContent = isRestore
+    ? 'Sản phẩm sẽ xuất hiện trở lại và có thể tiếp tục bán hàng.'
+    : 'Sản phẩm sẽ được lưu trữ và ẩn khỏi danh sách bán hàng. Hóa đơn và dữ liệu lịch sử vẫn được giữ nguyên.';
+  icon.className = isRestore ? 'bi bi-arrow-counterclockwise' : 'bi bi-archive';
+  confirmButton.className = isRestore ? 'btn btn-primary' : 'btn btn-danger';
+  confirmButton.innerHTML = isRestore
+    ? '<i class="bi bi-arrow-counterclockwise me-1"></i>Khôi phục'
+    : '<i class="bi bi-archive me-1"></i>Ngừng kinh doanh';
+
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('productActionModal')).show();
+  return false;
+}
+
+document.getElementById('productActionModal')?.addEventListener('hidden.bs.modal', function () {
+  pendingProductActionForm = null;
+});
+
+document.getElementById('confirmProductActionButton')?.addEventListener('click', function () {
+  if (!pendingProductActionForm) return;
+  pendingProductActionForm.dataset.actionConfirmed = '1';
+  pendingProductActionForm.requestSubmit();
+});
+
 // ── In Bảng Giá ───────────────────────────────────────────────
 function printPriceList() {
   const BIZ = <?= json_encode([
@@ -258,8 +520,14 @@ function printPriceList() {
         $file  = DATA_PATH . "/{$reqBranch}/" . $cat['file'];
         $prods = readJson($file);
         if (empty($prods)) continue;
+        $supportsColors = in_array('color_surcharge', $cat['capabilities'] ?? [], true);
+        if (!$supportsColors) {
+            foreach ($prods as &$product) $product['special_colors'] = [];
+            unset($product);
+        }
         $groups[] = [
             'name'     => $cat['name'],
+            'supports_colors' => $supportsColors,
             'products' => array_values($prods),
         ];
     }
@@ -278,7 +546,7 @@ function printPriceList() {
         <td style="font-weight:bold">${_esc(p.name||'')}${hasSpecial?'<span class="variant-tag">màu thường</span>':''}</td>
         <td style="text-align:center">${_esc(p.unit||'')}</td>
         <td style="text-align:right;font-weight:bold;font-size:13pt">${_fmtPrice(p.price_out)}</td>
-        <td class="price-note">${hasSpecial ? 'Theo màu' : 'Theo thị trường'}</td>
+        <td class="price-note"></td>
       </tr>`;
       // Dòng màu đặc biệt
       if (hasSpecial) {
@@ -292,7 +560,7 @@ function printPriceList() {
             </td>
             <td style="text-align:center;color:#777">${_esc(p.unit||'')}</td>
             <td style="text-align:right;font-weight:bold;font-size:13pt;color:#7c3aed">${_fmtPrice(finalPrice)}</td>
-            <td class="price-note">+ ${_fmtPrice(sc.surcharge)}</td>
+            <td class="price-note"></td>
           </tr>`;
         });
       }
@@ -343,19 +611,24 @@ function printPriceList() {
 
   /* Nhóm hàng */
   .group-block {
-    margin-bottom: 6mm;
-    break-inside: avoid;
+    margin-bottom: 3mm;
     border: 1px solid #cbd5e1;
     border-radius: 2mm;
     overflow: hidden;
   }
+  .group-block table { page-break-inside: auto; }
+  .group-block tr { page-break-inside: avoid; page-break-after: auto; }
   .group-title {
+    page-break-after: avoid;
     display: flex;
     align-items: center;
     gap: 3mm;
-    font-size: 13pt; font-weight: bold;
-    background: #0f172a; color: #fff;
-    padding: 2.8mm 4mm;
+    font-size: 13pt;
+    font-weight: bold;
+    background: #fff;
+    color: #000;
+    border-bottom: 1px solid #94a3b8;
+    padding: 2.4mm 4mm;
     letter-spacing: .5px;
   }
   .group-index {
@@ -365,17 +638,15 @@ function printPriceList() {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: #fff;
-    color: #0f172a;
+    border: 1px solid #000;
+    color: #000;
     font-size: 9.5pt;
     font-weight: bold;
     letter-spacing: 0;
   }
-  .group-name { flex: 1; text-transform: uppercase; }
+  .group-name { flex: 1; text-transform: uppercase; font-weight: 900; color: #000; }
   .group-count {
-    border: 1px solid rgba(255,255,255,.55);
-    border-radius: 999px;
-    padding: 1mm 2.5mm;
+    color: #444;
     font-size: 9.5pt;
     font-weight: normal;
     letter-spacing: 0;
@@ -451,7 +722,7 @@ ${tablesHtml}
 <div class="note-box">
   <b>Ghi chú:</b>
   Giá trên là giá bán lẻ, chưa bao gồm VAT.
-  Màu đặc biệt (nền tím) có phụ thu thêm theo từng loại màu.
+  ${GROUPS.some(group => group.supports_colors) ? 'Màu đặc biệt (nền tím) có phụ thu thêm theo từng loại màu.' : ''}
   Liên hệ cửa hàng để biết thêm chi tiết và giá sỉ.
 </div>
 
@@ -468,6 +739,23 @@ ${tablesHtml}
 function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function _fmtPrice(n) { return new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND'}).format(Number(n)||0); }
 let specialColors = [];
+const CATEGORY_UNITS = <?= json_encode($categoryUnits, JSON_UNESCAPED_UNICODE) ?>;
+const CATEGORY_CAPABILITIES = <?= json_encode($categoryCapabilities, JSON_UNESCAPED_UNICODE) ?>;
+
+function categorySupports(categoryKey, capability) {
+  return (CATEGORY_CAPABILITIES[categoryKey] || []).includes(capability);
+}
+
+function updateSpecialColorVisibility(categoryKey) {
+  const section = document.getElementById('specialColorsSection');
+  if (!section) return;
+  const enabled = categorySupports(categoryKey, 'color_surcharge');
+  section.hidden = !enabled;
+  if (!enabled && specialColors.length) {
+    specialColors = [];
+    renderColors();
+  }
+}
 
 function renderColors() {
   const container = document.getElementById('specialColorsContainer');
@@ -512,7 +800,7 @@ function renderColors() {
       <!-- Loại phụ thu -->
       <select class="form-select form-select-sm" style="width:70px;flex-shrink:0"
         onchange="updateColor(${i},'surcharge_type',this.value);renderColors()">
-        <option value="fixed"   ${surchargeType==='fixed'  ?'selected':''}>â‚«</option>
+        <option value="fixed"   ${surchargeType==='fixed'  ?'selected':''}>₫</option>
         <option value="percent" ${surchargeType==='percent'?'selected':''}>%</option>
       </select>
       <!-- Giá trị phụ thu -->
@@ -529,7 +817,7 @@ function renderColors() {
           min="0" step="1" value="${fixVal}"
           onfocus="this.select()"
           oninput="updateColor(${i},'surcharge',this.value)">
-        <span class="input-group-text">â‚«</span>
+        <span class="input-group-text">₫</span>
       </div>`}
       <!-- Preview giá cuối -->
       ${basePrice > 0 ? `
@@ -614,6 +902,63 @@ function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function updateUnitOptions(categoryKey, selectedUnit = '') {
+  const unitSel = document.getElementById('pUnit');
+  if (!unitSel) return;
+  const units = CATEGORY_UNITS[categoryKey] || [];
+  unitSel.innerHTML = '';
+  if (!units.length) {
+    unitSel.innerHTML = '<option value="">Nhóm này chưa có đơn vị</option>';
+    return;
+  }
+  units.forEach(unit => {
+    const opt = document.createElement('option');
+    opt.value = unit;
+    opt.textContent = unit;
+    unitSel.appendChild(opt);
+  });
+  unitSel.value = units.includes(selectedUnit) ? selectedUnit : units[0];
+}
+
+document.getElementById('pCategory')?.addEventListener('change', function() {
+  updateUnitOptions(this.value);
+  updateSpecialColorVisibility(this.value);
+});
+
+function updateBulkTemplateLink() {
+  const cat = document.getElementById('bulkCategory')?.value || '';
+  const link = document.getElementById('bulkTemplateLink');
+  const colorEnabled = categorySupports(cat, 'color_surcharge');
+  document.querySelectorAll('.bulk-color-column').forEach(el => {
+    el.style.display = colorEnabled ? '' : 'none';
+  });
+  const hint = document.getElementById('bulkCapabilityHint');
+  if (hint) {
+    hint.textContent = colorEnabled
+      ? 'Nhóm này có màu đặc biệt: file mẫu sẽ bao gồm cột Màu đặc biệt.'
+      : 'Nhóm này không dùng màu đặc biệt: file mẫu chỉ gồm các cột sản phẩm cơ bản.';
+  }
+  if (!link) return;
+  if (!cat) {
+    link.href = '#';
+    link.classList.add('disabled');
+    link.setAttribute('aria-disabled', 'true');
+    return;
+  }
+  link.href = `index.php?page=products&branch=<?= urlencode($reqBranch) ?>&action=bulk_template&cat=${encodeURIComponent(cat)}`;
+  link.classList.remove('disabled');
+  link.removeAttribute('aria-disabled');
+}
+
+function openBulkModal() {
+  const bulkCat = document.getElementById('bulkCategory');
+  if (bulkCat && !bulkCat.value) {
+    bulkCat.value = '<?= htmlspecialchars($category, ENT_QUOTES) ?>';
+  }
+  updateBulkTemplateLink();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('bulkImportModal')).show();
+}
+
 // ── Modal thêm ────────────────────────────────────────────────
 function openAddModal() {
   document.getElementById('modalTitle').textContent   = 'Thêm Sản Phẩm Mới';
@@ -626,10 +971,11 @@ function openAddModal() {
   document.getElementById('pStock').value    = '0';
   document.getElementById('pMinStock').value = '5';
   document.getElementById('pCategory').value = '';
-  document.getElementById('pUnit').value     = '<?= UNITS[0] ?>';
+  updateUnitOptions('');
   document.getElementById('pStock').removeAttribute('readonly');
   specialColors = [];
   renderColors();
+  updateSpecialColorVisibility('');
   bootstrap.Modal.getOrCreateInstance(document.getElementById('productModal')).show();
 }
 
@@ -646,15 +992,14 @@ function openEditModal(p) {
   document.getElementById('pMinStock').value = p.min_stock || 5;
   const catSel = document.getElementById('pCategory');
   if (p.category_key) catSel.value = p.category_key;
-  const unitSel = document.getElementById('pUnit');
-  if (p.unit) unitSel.value = p.unit;
+  updateUnitOptions(catSel.value, p.unit || '');
   document.getElementById('pStock').setAttribute('readonly', true);
   // Load màu đặc biệt
   specialColors = Array.isArray(p.special_colors) ? p.special_colors : [];
   renderColors();
+  updateSpecialColorVisibility(catSel.value);
   bootstrap.Modal.getOrCreateInstance(document.getElementById('productModal')).show();
 }
 </script>
-<?php endif; ?>
 
 <?php include BASE_PATH . '/views/layouts/footer.php'; ?>

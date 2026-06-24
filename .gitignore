@@ -7,3 +7,6 @@
 # Nếu muốn giữ cấu trúc thư mục (không bị git bỏ trống)
 !/data/**/
 !.gitkeep
+
+# Backup production nằm ngoài web root; không đưa ZIP dữ liệu lên Git
+/backups/*.zip

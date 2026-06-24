@@ -27,11 +27,13 @@ if (sidebarToggle) {
   sidebarToggle.addEventListener('click', () => {
     sidebar.classList.toggle('open');
     overlay.classList.toggle('open');
+    document.body.classList.toggle('sidebar-open', sidebar.classList.contains('open'));
   });
 }
 overlay.addEventListener('click', () => {
   sidebar.classList.remove('open');
   overlay.classList.remove('open');
+  document.body.classList.remove('sidebar-open');
 });
 
 // Format money VND
@@ -47,7 +49,7 @@ function formatNum(n) {
 // ============================================================
 // INVOICE BUILDER
 // ============================================================
-let invoiceItems = [];
+let legacyInvoiceItems = [];
 let currentBranch = '';
 
 function initInvoiceBuilder(branch) {
@@ -56,12 +58,12 @@ function initInvoiceBuilder(branch) {
 }
 
 function addInvoiceItem(product) {
-  const existing = invoiceItems.find(i => i.code === product.code);
+  const existing = legacyInvoiceItems.find(i => i.code === product.code);
   if (existing) {
     existing.qty += 1;
     existing.line_total = existing.qty * existing.price_out;
   } else {
-    invoiceItems.push({
+    legacyInvoiceItems.push({
       code:       product.code,
       name:       product.name,
       unit:       product.unit,
@@ -76,16 +78,16 @@ function addInvoiceItem(product) {
 }
 
 function removeInvoiceItem(code) {
-  invoiceItems = invoiceItems.filter(i => i.code !== code);
+  legacyInvoiceItems = legacyInvoiceItems.filter(i => i.code !== code);
   renderInvoiceItems();
 }
 
 function updateQty(code, qty) {
-  const item = invoiceItems.find(i => i.code === code);
+  const item = legacyInvoiceItems.find(i => i.code === code);
   if (!item) return;
   const n = parseFloat(qty) || 0;
   if (n > item.stock) {
-    alert(`Tồn kho chỉ còn ${formatNum(item.stock)} ${item.unit}`);
+    showToast(`Tồn kho chỉ còn ${formatNum(item.stock)} ${item.unit}`, 'warning');
     return;
   }
   item.qty = n;
@@ -94,7 +96,7 @@ function updateQty(code, qty) {
 }
 
 function updatePrice(code, price) {
-  const item = invoiceItems.find(i => i.code === code);
+  const item = legacyInvoiceItems.find(i => i.code === code);
   if (!item) return;
   item.price_out = parseFloat(price) || 0;
   item.line_total = item.qty * item.price_out;
@@ -110,10 +112,10 @@ function renderInvoiceItems() {
   let total = 0;
   container.innerHTML = '';
 
-  if (invoiceItems.length === 0) {
+  if (legacyInvoiceItems.length === 0) {
     container.innerHTML = '<div class="empty-state"><i class="bi bi-cart-x"></i><p>Chưa có sản phẩm. Tìm và thêm sản phẩm bên trên.</p></div>';
   } else {
-    invoiceItems.forEach(item => {
+    legacyInvoiceItems.forEach(item => {
       total += item.line_total;
       const row = document.createElement('div');
       row.className = 'invoice-item-row';
@@ -145,7 +147,7 @@ function renderInvoiceItems() {
   }
 
   if (totalEl) totalEl.textContent = formatMoney(total);
-  if (itemsJson) itemsJson.value = JSON.stringify(invoiceItems);
+  if (itemsJson) itemsJson.value = JSON.stringify(legacyInvoiceItems);
 }
 
 // Product search in invoice
@@ -186,13 +188,53 @@ document.addEventListener('click', e => {
 
 // Submit invoice
 function submitInvoice(e) {
-  if (invoiceItems.length === 0) { e.preventDefault(); alert('Vui lòng thêm sản phẩm vào hóa đơn'); return false; }
+  if (legacyInvoiceItems.length === 0) { e.preventDefault(); showToast('Vui lòng thêm sản phẩm vào hóa đơn', 'warning'); return false; }
 }
 
 // Escape HTML
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// Vietnamese date inputs: visible dd/mm/yyyy, submitted yyyy-mm-dd.
+function isoToVnDate(value) {
+  const m = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+}
+
+function vnToIsoDate(value) {
+  const m = String(value || '').trim().match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+  if (!m) return '';
+  const d = String(parseInt(m[1], 10)).padStart(2, '0');
+  const mo = String(parseInt(m[2], 10)).padStart(2, '0');
+  const y = m[3];
+  const dt = new Date(`${y}-${mo}-${d}T00:00:00`);
+  if (Number.isNaN(dt.getTime())) return '';
+  if (dt.getFullYear() !== Number(y) || dt.getMonth() + 1 !== Number(mo) || dt.getDate() !== Number(d)) return '';
+  return `${y}-${mo}-${d}`;
+}
+
+function initVnDateInputs() {
+  document.querySelectorAll('[data-vn-date-target]').forEach(display => {
+    const target = document.getElementById(display.dataset.vnDateTarget);
+    if (!target) return;
+    display.value = isoToVnDate(target.value);
+    display.placeholder = 'dd/mm/yyyy';
+    display.inputMode = 'numeric';
+    display.autocomplete = 'off';
+
+    const sync = () => {
+      const iso = vnToIsoDate(display.value);
+      target.value = iso;
+      display.setCustomValidity(display.value && !iso ? 'Vui lòng nhập ngày theo dạng dd/mm/yyyy' : '');
+      target.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    display.addEventListener('input', sync);
+    display.addEventListener('change', sync);
+  });
+}
+
+initVnDateInputs();
 
 // Confirm delete
 function confirmDelete(msg) {
@@ -206,3 +248,213 @@ setTimeout(() => {
     if (bs) bs.close();
   });
 }, 5000);
+
+// ============================================================
+// PWA INSTALL + SERVICE WORKER
+// ============================================================
+let deferredInstallPrompt = null;
+const installBtn = document.getElementById('pwaInstallBtn');
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+
+window.addEventListener('beforeinstallprompt', event => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  if (installBtn) installBtn.style.display = '';
+});
+
+if (installBtn) {
+  installBtn.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) {
+      showToast('Nếu dùng iPhone/iPad: mở nút Chia sẻ trong Safari rồi chọn "Thêm vào Màn hình chính".', 'info', { duration: 8000, title: 'Cài đặt ứng dụng' });
+      return;
+    }
+
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice.catch(() => null);
+    deferredInstallPrompt = null;
+    installBtn.style.display = 'none';
+  });
+}
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  if (installBtn) installBtn.style.display = 'none';
+});
+
+// ============================================================
+// PWA BROWSER NAVIGATION
+// ============================================================
+function isPwaStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+}
+
+function formFingerprint(form) {
+  const values = [];
+  new FormData(form).forEach((value, key) => {
+    const isFile = typeof File !== 'undefined' && value instanceof File;
+    values.push([key, isFile ? `${value.name}:${value.size}` : String(value)]);
+  });
+  return JSON.stringify(values);
+}
+
+function initPwaBrowserNavigation() {
+  if (!isPwaStandalone()) return;
+
+  document.documentElement.classList.add('pwa-standalone');
+
+  const backBtn = document.getElementById('pwaNavBack');
+  const forwardBtn = document.getElementById('pwaNavForward');
+  const reloadBtn = document.getElementById('pwaNavReload');
+  const nav = document.getElementById('pwaBrowserNav');
+  const desktopSlot = document.getElementById('pwaDesktopNavSlot');
+  const desktopMedia = window.matchMedia('(min-width: 769px)');
+  const guardedForms = Array.from(document.querySelectorAll('form')).filter(form =>
+    String(form.method || '').toLowerCase() === 'post'
+  );
+  const initialForms = new WeakMap();
+  let formSubmitting = false;
+
+  const syncNavigationPosition = () => {
+    if (!nav || !desktopSlot) return;
+    if (desktopMedia.matches) {
+      if (nav.parentElement !== desktopSlot) desktopSlot.appendChild(nav);
+    } else if (nav.parentElement !== document.body) {
+      document.body.appendChild(nav);
+    }
+  };
+
+  if (typeof desktopMedia.addEventListener === 'function') {
+    desktopMedia.addEventListener('change', syncNavigationPosition);
+  } else {
+    desktopMedia.addListener(syncNavigationPosition);
+  }
+  syncNavigationPosition();
+
+  guardedForms.forEach(form => {
+    initialForms.set(form, formFingerprint(form));
+    form.addEventListener('submit', () => { formSubmitting = true; });
+  });
+
+  const hasUnsavedChanges = () => !formSubmitting && guardedForms.some(form =>
+    initialForms.get(form) !== formFingerprint(form)
+  );
+
+  const allowNavigation = () => !hasUnsavedChanges() || confirm(
+    'Bạn có thay đổi chưa lưu. Tiếp tục sẽ làm mất các thay đổi này.'
+  );
+
+  backBtn?.addEventListener('click', () => {
+    if (!allowNavigation()) return;
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.location.assign('index.php');
+    }
+  });
+
+  forwardBtn?.addEventListener('click', () => {
+    if (!allowNavigation()) return;
+    window.history.forward();
+  });
+
+  reloadBtn?.addEventListener('click', () => {
+    if (!allowNavigation()) return;
+    window.location.reload();
+  });
+}
+
+initPwaBrowserNavigation();
+
+// ============================================================
+// PROGRESSIVE LISTS
+// ============================================================
+function initProgressiveLists(root = document) {
+  root.querySelectorAll('[data-progressive-list]').forEach(list => {
+    if (list.dataset.progressiveReady === '1') return;
+    list.dataset.progressiveReady = '1';
+
+    const initial = Math.max(1, parseInt(list.dataset.progressiveInitial || '20', 10));
+    const batch = Math.max(1, parseInt(list.dataset.progressiveBatch || String(initial), 10));
+    const autoLoad = list.dataset.progressiveAuto === 'true';
+    const itemLabel = (list.dataset.progressiveLabel || '').trim();
+    const items = Array.from(list.children).filter(item => item.hasAttribute('data-progressive-item'));
+    const total = items.length;
+    if (total <= initial) return;
+
+    const controls = document.getElementById(list.dataset.progressiveControls || '');
+    if (!controls) return;
+    const pending = items.slice(initial);
+    pending.forEach(item => item.remove());
+
+    controls.classList.add('progressive-list-controls');
+
+    const status = document.createElement('span');
+    status.className = 'progressive-list-status';
+    status.setAttribute('aria-live', 'polite');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn btn-sm btn-outline-primary progressive-list-button';
+    button.innerHTML = '<i class="bi bi-chevron-down me-1"></i>Tải thêm';
+    controls.append(status, button);
+
+    let observer = null;
+    let loading = false;
+
+    const itemSuffix = itemLabel ? ' ' + itemLabel : '';
+
+    const renderStatus = () => {
+      const shown = total - pending.length;
+      if (!pending.length && autoLoad) {
+        status.innerHTML = '<i class="bi bi-check-circle me-1 text-success"></i>Đã hiển thị toàn bộ ' + total + itemSuffix;
+        controls.classList.add('progressive-list-complete');
+        button.remove();
+        observer?.disconnect();
+        return;
+      }
+      status.textContent = 'Đang hiển thị ' + shown + '/' + total + itemSuffix;
+      if (!pending.length) controls.remove();
+    };
+
+    const loadNext = () => {
+      if (loading || !pending.length) return;
+      loading = true;
+      if (autoLoad) status.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Đang tải thêm' + itemSuffix + '...';
+      window.requestAnimationFrame(() => {
+        try {
+          const nextItems = pending.splice(0, batch);
+          const fragment = document.createDocumentFragment();
+          nextItems.forEach(item => fragment.appendChild(item));
+          list.appendChild(fragment);
+          renderStatus();
+        } catch (error) {
+          button.hidden = false;
+          status.textContent = 'Không thể tự tải thêm. Vui lòng bấm Tải thêm.';
+          observer?.disconnect();
+        } finally {
+          loading = false;
+        }
+      });
+    };
+
+    button.addEventListener('click', loadNext);
+
+    if (autoLoad && 'IntersectionObserver' in window) {
+      button.hidden = true;
+      controls.classList.add('progressive-list-auto');
+      observer = new IntersectionObserver(entries => {
+        if (entries.some(entry => entry.isIntersecting)) loadNext();
+      }, { root: null, rootMargin: '320px 0px', threshold: 0 });
+      observer.observe(controls);
+    }
+
+    renderStatus();
+  });
+}
+
+initProgressiveLists();

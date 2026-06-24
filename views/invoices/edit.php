@@ -15,7 +15,7 @@ if (($invoice['delivery_status']??'') === 'delivered') {
     header("Location: index.php?page=invoices&branch={$reqBranch}&ym={$ym}"); exit;
 }
 
-$branchInfo  = BRANCHES[$reqBranch];
+$branchInfo  = getBranchInfo($reqBranch);
 $allProducts = getAllProducts($reqBranch);
 $catList     = getCategories($reqBranch, true);
 $pageTitle   = 'Sửa Hóa Đơn — ' . $invoice['id'];
@@ -93,7 +93,7 @@ include BASE_PATH . '/views/layouts/header.php';
           <div class="col-md-2">
             <label class="form-label" style="font-size:11.5px">Thanh toán</label>
             <select name="payment" id="inpPayment" class="form-select form-select-sm" onchange="updateSum()">
-              <?php foreach(['cash'=>'Tiền mặt','transfer'=>'Chuyển khoản','cod'=>'COD','credit'=>'Công nợ'] as $v=>$l): ?>
+              <?php $editPaymentOptions=['cash'=>'Tiền mặt','transfer'=>'Chuyển khoản','cod'=>'COD']; if(featureEnabled('receivables')||($invoice['payment']??'')==='credit')$editPaymentOptions['credit']='Công nợ'; foreach($editPaymentOptions as $v=>$l): ?>
               <option value="<?= $v ?>" <?= ($invoice['payment']??'')===$v?'selected':'' ?>><?= $l ?></option>
               <?php endforeach; ?>
             </select>
@@ -105,17 +105,17 @@ include BASE_PATH . '/views/layouts/header.php';
           </div>
           <div class="col-md-2">
             <label class="form-label" style="font-size:11.5px"><i class="bi bi-truck me-1 text-warning"></i>Ngày giao</label>
-            <input type="date" name="delivery_date" id="inpDel"
-              class="form-control form-control-sm"
+            <input type="hidden" name="delivery_date" id="inpDel"
               value="<?= htmlspecialchars($invoice['delivery_date']??'') ?>"
               onchange="updateDelSum(this.value)">
+            <input type="text" class="form-control form-control-sm" data-vn-date-target="inpDel" placeholder="dd/mm/yyyy">
           </div>
           <div class="col-md-2">
             <label class="form-label" style="font-size:11.5px">Giá vận chuyển</label>
             <input type="number" name="shipping_fee" id="inpShippingFee"
-              class="form-control form-control-sm" min="0" step="1000"
+              class="form-control form-control-sm" min="0" step="1"
               value="<?= htmlspecialchars($invoice['shipping_fee']??0) ?>"
-              placeholder="0 â‚«"
+              placeholder="0 &#8363;"
               oninput="updateTotals()">
           </div>
           <div class="col-md-3">
@@ -184,7 +184,7 @@ include BASE_PATH . '/views/layouts/header.php';
               <div class="d-flex justify-content-between mt-1">
                 <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#9ca3af"><?= htmlspecialchars($p['code']) ?></span>
                 <span style="font-size:11px;font-weight:700;color:<?= $low?'#ef4444':'#10b981' ?>"><?= number_format($p['stock']??0,2,',','.') ?> <?= htmlspecialchars($p['unit']) ?></span>
-                <span style="font-size:11px;font-weight:700;color:#f59e0b"><?= number_format($p['price_out']??0,0,',','.') ?>â‚«</span>
+                <span style="font-size:11px;font-weight:700;color:#f59e0b"><?= number_format($p['price_out']??0,0,',','.') ?> &#8363;</span>
               </div>
             </div>
             <?php endforeach; ?>
@@ -221,7 +221,7 @@ include BASE_PATH . '/views/layouts/header.php';
           <div class="d-flex align-items-center gap-3">
             <div class="text-end">
               <div style="font-size:11px;color:#9ca3af">TỔNG CỘNG</div>
-              <div id="invoiceTotal" style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:#f59e0b">0 â‚«</div>
+              <div id="invoiceTotal" style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:#f59e0b">0 &#8363;</div>
             </div>
             <button type="submit" class="btn btn-warning btn-lg px-4" style="white-space:nowrap">
               <i class="bi bi-check2-circle me-2"></i>Lưu Thay Đổi
@@ -315,7 +315,7 @@ function setQty(code,val) {
   const item=invoiceItems.find(i=>i.code===code); if(!item) return;
   const n=parseFloat(val)||0;
   if(n<=0){removeItem(code);return;}
-  if(n>item.stock){alert(`Tồn kho chỉ còn ${fmt(item.stock)} ${item.unit}`);const inp=document.querySelector(`[data-qty="${code}"]`);if(inp)inp.value=item.qty;return;}
+  if(n>item.stock){showToast(`Tồn kho chỉ còn ${fmt(item.stock)} ${item.unit}`,'warning');const inp=document.querySelector(`[data-qty="${code}"]`);if(inp)inp.value=item.qty;return;}
   item.qty=n; item.line_total=item.qty*item.price_out;
   const lt=document.getElementById('lt_'+code); if(lt)lt.textContent=fmtM(item.line_total);
   updateTotals(); syncJson();
@@ -339,7 +339,7 @@ function renderItems() {
         <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#9ca3af">${esc(item.code)} <span style="color:${item.stock<5?'#ef4444':'#10b981'};font-weight:700">Tồn: ${fmt(item.stock)} ${esc(item.unit)}</span></div>
       </div>
       <div><input type="number" data-qty="${esc(item.code)}" class="form-control form-control-sm" style="text-align:right;font-weight:700" min="0.01" step="0.01" value="${item.qty}" onfocus="this.select()" onchange="setQty('${esc(item.code)}',this.value)"></div>
-      <div><input type="number" class="form-control form-control-sm" style="text-align:right" min="0" step="1000" value="${item.price_out}" onfocus="this.select()" onchange="setPrice('${esc(item.code)}',this.value)"></div>
+      <div><input type="number" class="form-control form-control-sm" style="text-align:right" min="0" step="1" value="${item.price_out}" onfocus="this.select()" onchange="setPrice('${esc(item.code)}',this.value)"></div>
       <div id="lt_${esc(item.code)}" style="font-family:'JetBrains Mono',monospace;font-weight:800;font-size:14px;color:#f59e0b;text-align:right">${fmtM(item.line_total)}</div>
       <div style="text-align:center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeItem('${esc(item.code)}')"><i class="bi bi-x"></i></button></div>
     </div>`).join('');
@@ -354,7 +354,7 @@ function updateTotals() {
 }
 function syncJson() { const el=document.getElementById('invoiceItemsJson'); if(el)el.value=JSON.stringify(invoiceItems); }
 function invoiceSubmit(e) {
-  if(!invoiceItems.length){e.preventDefault();alert('⚠️ Hóa đơn phải có ít nhất 1 sản phẩm!');return false;}
+  if(!invoiceItems.length){e.preventDefault();showToast('Hóa đơn phải có ít nhất 1 sản phẩm.','warning');return false;}
   syncJson(); return true;
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}

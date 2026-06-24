@@ -211,7 +211,7 @@ function deliveryBadgeSearch(array $inv): string {
             <?php endif; ?>
           </td>
           <td>
-            <?php $bi = BRANCHES[$branch] ?? null; if ($bi): ?>
+            <?php $bi = getBranchInfo($branch); if ($bi): ?>
             <span class="badge bg-<?= $bi['color'] ?> bg-opacity-15 text-<?= $bi['color'] ?>"
               style="font-size:11px"><?= htmlspecialchars($bi['short']) ?></span>
             <?php endif; ?>

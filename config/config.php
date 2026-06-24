@@ -8,6 +8,26 @@ define('APP_VERSION', '1.0.0');
 define('BASE_PATH', dirname(__DIR__));
 define('DATA_PATH', BASE_PATH . '/data');
 define('SESSION_TIMEOUT', 7200); // 2 giờ
+define('LOGIN_MAX_ATTEMPTS', 5);
+define('LOGIN_ATTEMPT_WINDOW', 900); // 15 phút
+define('LOGIN_LOCK_SECONDS', 900);   // khóa 15 phút
+define('PASSWORD_MIN_LENGTH', 8);
+
+// Kho backup phải nằm ngoài document root. Có thể ghi đè bằng biến môi trường
+// TRUONGPHU_BACKUP_PATH trên hosting.
+$configuredBackupPath = trim((string)getenv('TRUONGPHU_BACKUP_PATH'));
+if ($configuredBackupPath === '') {
+    $documentRoot = trim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''));
+    if ($documentRoot !== '') {
+        $configuredBackupPath = dirname(rtrim($documentRoot, '/\\')) . '/truongphu_private_backups';
+    } elseif (PHP_OS_FAMILY === 'Windows') {
+        $configuredBackupPath = dirname(dirname(BASE_PATH)) . '/truongphu_private_backups';
+    } else {
+        $homePath = trim((string)getenv('HOME'));
+        $configuredBackupPath = ($homePath !== '' ? $homePath : dirname(dirname(BASE_PATH))) . '/truongphu_private_backups';
+    }
+}
+define('PRIVATE_BACKUP_PATH', $configuredBackupPath);
 
 // ============================================================
 // THÔNG TIN DOANH NGHIỆP — hiển thị trên hóa đơn, phiếu giao

@@ -3,49 +3,160 @@
 // HÀM XỬ LÝ JSON AN TOÀN VỚI FLOCK
 // ============================================================
 
-/**
- * Đọc file JSON an toàn
- */
-function readJson(string $file): array
+function jsonLockDir(): string
 {
-    if (!file_exists($file)) {
-        return [];
-    }
-    $fp = fopen($file, 'r');
-    if (!$fp) return [];
-
-    flock($fp, LOCK_SH); // Khóa đọc
-    $content = stream_get_contents($fp);
-    flock($fp, LOCK_UN);
-    fclose($fp);
-
-    if (empty($content)) return [];
-    $data = json_decode($content, true);
-    return is_array($data) ? $data : [];
+    static $dir = null;
+    if ($dir !== null) return $dir;
+    $dir = rtrim(sys_get_temp_dir(), '/\\') . '/truongphu_locks_' . substr(sha1(BASE_PATH), 0, 12);
+    if (!is_dir($dir)) @mkdir($dir, 0700, true);
+    return $dir;
 }
 
-/**
- * Ghi file JSON an toàn
- */
-function writeJson(string $file, array $data): bool
+function jsonLockHandle(string $scope)
+{
+    $path = jsonLockDir() . '/' . sha1($scope) . '.lock';
+    return fopen($path, 'c+');
+}
+
+function readJsonUnlocked(string $file): array
+{
+    $previous = $file . '.previous';
+    if (!is_file($file) && is_file($previous)) @copy($previous, $file);
+    if (!is_file($file)) return [];
+
+    $content = file_get_contents($file);
+    if ($content === false || trim($content) === '') return [];
+    $data = json_decode($content, true);
+    if (is_array($data)) return $data;
+
+    if (is_file($previous)) {
+        $recovery = json_decode((string)file_get_contents($previous), true);
+        if (is_array($recovery)) {
+            @copy($previous, $file);
+            return $recovery;
+        }
+    }
+    error_log('JSON không hợp lệ: ' . $file . ' - ' . json_last_error_msg());
+    return [];
+}
+
+function writeJsonUnlocked(string $file, array $data): bool
 {
     $dir = dirname($file);
-    if (!is_dir($dir)) {
-        mkdir($dir, 0755, true);
+    if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) return false;
+
+    try {
+        $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
+        $suffix = bin2hex(random_bytes(6));
+    } catch (Throwable $e) {
+        error_log('Không mã hóa được JSON ' . $file . ': ' . $e->getMessage());
+        return false;
     }
 
-    $fp = fopen($file, 'c+');
+    $temp = $dir . '/.' . basename($file) . ".{$suffix}.tmp";
+    $fp = @fopen($temp, 'xb');
     if (!$fp) return false;
 
-    flock($fp, LOCK_EX); // Khóa ghi độc quyền
-    ftruncate($fp, 0);
-    rewind($fp);
-    $written = fwrite($fp, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+    $length = strlen($json);
+    $offset = 0;
+    while ($offset < $length) {
+        $written = fwrite($fp, substr($json, $offset));
+        if ($written === false || $written === 0) {
+            fclose($fp);
+            @unlink($temp);
+            return false;
+        }
+        $offset += $written;
+    }
     fflush($fp);
-    flock($fp, LOCK_UN);
+    if (function_exists('fsync')) @fsync($fp);
     fclose($fp);
+    @chmod($temp, is_file($file) ? (fileperms($file) & 0777) : 0640);
 
-    return $written !== false;
+    // Unix cho phép rename đè file và đây là thao tác nguyên tử.
+    if (DIRECTORY_SEPARATOR !== '\\' || !is_file($file)) {
+        if (@rename($temp, $file)) return true;
+        @unlink($temp);
+        return false;
+    }
+
+    // Windows không rename đè file: giữ bản cũ để luôn có thể phục hồi.
+    $previous = $file . '.previous';
+    @unlink($previous);
+    if (!@rename($file, $previous)) {
+        @unlink($temp);
+        return false;
+    }
+    if (@rename($temp, $file)) {
+        @unlink($previous);
+        return true;
+    }
+    @rename($previous, $file);
+    @unlink($temp);
+    return false;
+}
+
+/** Đọc JSON dưới khóa chia sẻ tương thích với cơ chế thay file nguyên tử. */
+function readJson(string $file): array
+{
+    $lock = jsonLockHandle('file:' . $file);
+    if (!$lock) return readJsonUnlocked($file);
+    flock($lock, LOCK_SH);
+    try {
+        return readJsonUnlocked($file);
+    } finally {
+        flock($lock, LOCK_UN);
+        fclose($lock);
+    }
+}
+
+/** Ghi JSON nguyên tử; file thật chỉ được thay sau khi file tạm đã ghi hoàn tất. */
+function writeJson(string $file, array $data): bool
+{
+    $lock = jsonLockHandle('file:' . $file);
+    if (!$lock) return false;
+    flock($lock, LOCK_EX);
+    try {
+        return writeJsonUnlocked($file, $data);
+    } finally {
+        flock($lock, LOCK_UN);
+        fclose($lock);
+    }
+}
+
+/** Cập nhật read-modify-write dưới cùng một khóa để không làm mất thay đổi đồng thời. */
+function updateJson(string $file, callable $mutator): bool
+{
+    $lock = jsonLockHandle('file:' . $file);
+    if (!$lock) return false;
+    flock($lock, LOCK_EX);
+    try {
+        $updated = $mutator(readJsonUnlocked($file));
+        return is_array($updated) && writeJsonUnlocked($file, $updated);
+    } finally {
+        flock($lock, LOCK_UN);
+        fclose($lock);
+    }
+}
+
+/** Khóa giao dịch cấp chi nhánh, có thể gọi lồng nhau trong cùng request. */
+function withBranchTransaction(string $branch, callable $operation)
+{
+    static $active = [];
+    $branch = trim($branch);
+    if ($branch === '' || isset($active[$branch])) return $operation();
+
+    $lock = jsonLockHandle('branch:' . DATA_PATH . '/' . $branch);
+    if (!$lock) throw new RuntimeException('Không tạo được khóa giao dịch chi nhánh');
+    flock($lock, LOCK_EX);
+    $active[$branch] = true;
+    try {
+        return $operation();
+    } finally {
+        unset($active[$branch]);
+        flock($lock, LOCK_UN);
+        fclose($lock);
+    }
 }
 
 /**
@@ -61,9 +172,19 @@ function getProductFile(string $branch, string $category): string
 /**
  * Lấy tất cả sản phẩm của 1 chi nhánh (dùng categories.json động)
  */
-function getAllProducts(string $branch): array
+function getAllProducts(string $branch, bool $includeArchived = false): array
 {
-    return getAllProductsDynamic($branch);
+    return getAllProductsDynamic($branch, $includeArchived);
+}
+
+function productIsArchived(array $product): bool
+{
+    return ($product['active'] ?? true) === false || !empty($product['archived_at']);
+}
+
+function invoiceIsCancelled(array $invoice): bool
+{
+    return ($invoice['status'] ?? 'active') === 'cancelled' || !empty($invoice['cancelled_at']);
 }
 
 /**
@@ -85,42 +206,31 @@ function searchProducts(string $branch, string $keyword): array
  */
 function updateStock(string $branch, string $productCode, float $qty, string $type): bool
 {
-    $categories = getCategories($branch, true);
+    // Cần tìm cả sản phẩm/nhóm đã lưu trữ để hoàn tồn khi hủy chứng từ cũ.
+    $categories = getCategories($branch, false);
     foreach ($categories as $catInfo) {
         $file = DATA_PATH . "/{$branch}/" . $catInfo['file'];
         if (!file_exists($file)) continue;
 
-        $fp = fopen($file, 'c+');
-        if (!$fp) continue;
-
-        flock($fp, LOCK_EX);
-        $content = stream_get_contents($fp);
-        $products = json_decode($content ?: '[]', true) ?: [];
-
         $found = false;
-        foreach ($products as &$p) {
-            if ($p['code'] === $productCode) {
-                if ($type === 'in') {
-                    $p['stock'] = ($p['stock'] ?? 0) + $qty;
-                } else {
-                    $p['stock'] = max(0, ($p['stock'] ?? 0) - $qty);
+        $saved = updateJson($file, function (array $products) use ($productCode, $qty, $type, &$found): array {
+            foreach ($products as &$product) {
+                if (($product['code'] ?? '') === $productCode) {
+                    if ($type === 'in') {
+                        $product['stock'] = ($product['stock'] ?? 0) + $qty;
+                    } else {
+                        $product['stock'] = max(0, ($product['stock'] ?? 0) - $qty);
+                    }
+                    $product['updated_at'] = date('Y-m-d H:i:s');
+                    $found = true;
+                    break;
                 }
-                $p['updated_at'] = date('Y-m-d H:i:s');
-                $found = true;
-                break;
             }
-        }
+            unset($product);
+            return $products;
+        });
 
-        if ($found) {
-            ftruncate($fp, 0);
-            rewind($fp);
-            fwrite($fp, json_encode($products, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
-            fflush($fp);
-        }
-        flock($fp, LOCK_UN);
-        fclose($fp);
-
-        if ($found) return true;
+        if ($found) return $saved;
     }
     return false;
 }
@@ -133,23 +243,14 @@ function createImport(string $branch, array $importData): array
     $yearMonth = date('Y_m');
     $file = DATA_PATH . "/{$branch}/imports_{$yearMonth}.json";
 
-    $fp = fopen($file, 'c+');
-    if (!$fp) return ['success' => false, 'message' => 'Không thể mở file'];
-
-    flock($fp, LOCK_EX);
-    $content = stream_get_contents($fp);
-    $imports = json_decode($content ?: '[]', true) ?: [];
-
-    $importData['id']         = 'IMP-' . strtoupper($branch[7] ?? 'X') . '-' . date('YmdHis') . '-' . rand(100, 999);
+    $branchShort = getBranchInfo($branch)['short'] ?? strtoupper($branch[7] ?? 'X');
+    $importData['id']         = 'IMP-' . branchCodePrefix($branchShort) . '-' . date('YmdHis') . '-' . rand(100, 999);
     $importData['created_at'] = date('Y-m-d H:i:s');
-    $imports[]                = $importData;
-
-    ftruncate($fp, 0);
-    rewind($fp);
-    fwrite($fp, json_encode($imports, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
-    fflush($fp);
-    flock($fp, LOCK_UN);
-    fclose($fp);
+    $saved = updateJson($file, function (array $imports) use ($importData): array {
+        $imports[] = $importData;
+        return $imports;
+    });
+    if (!$saved) return ['success' => false, 'message' => 'Không thể lưu phiếu nhập'];
 
     return ['success' => true, 'id' => $importData['id']];
 }
@@ -162,17 +263,11 @@ function createInvoice(string $branch, array $invoiceData): array
     $yearMonth = date('Y_m');
     $file = DATA_PATH . "/{$branch}/invoices_{$yearMonth}.json";
 
-    $fp = fopen($file, 'c+');
-    if (!$fp) return ['success' => false, 'message' => 'Không thể mở file'];
-
-    flock($fp, LOCK_EX);
-    $content = stream_get_contents($fp);
-    $invoices = json_decode($content ?: '[]', true) ?: [];
-
-    $prefix = ($branch === 'branch_1_vlxd') ? 'VLXD' : 'MT';
+    $prefix = branchCodePrefix(getBranchInfo($branch)['short'] ?? 'CN');
     $invoiceData['id']         = "INV-{$prefix}-" . date('YmdHis') . '-' . rand(100, 999);
     $invoiceData['created_at'] = date('Y-m-d H:i:s');
     $invoiceData['branch']     = $branch;
+    $invoiceData['status']     = $invoiceData['status'] ?? 'active';
 
     // Tính tổng (cộng giá vận chuyển)
     $total = 0;
@@ -182,16 +277,24 @@ function createInvoice(string $branch, array $invoiceData): array
     $shippingFee = $invoiceData['shipping_fee'] ?? 0;
     $total += $shippingFee;
     $invoiceData['total'] = $total;
-    $invoices[]           = $invoiceData;
-
-    ftruncate($fp, 0);
-    rewind($fp);
-    fwrite($fp, json_encode($invoices, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
-    fflush($fp);
-    flock($fp, LOCK_UN);
-    fclose($fp);
+    $saved = updateJson($file, function (array $invoices) use ($invoiceData): array {
+        $invoices[] = $invoiceData;
+        return $invoices;
+    });
+    if (!$saved) return ['success' => false, 'message' => 'Không thể lưu hóa đơn'];
 
     return ['success' => true, 'id' => $invoiceData['id'], 'total' => $total];
+}
+
+function branchCodePrefix(string $short): string
+{
+    $short = trim($short);
+    $converted = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $short);
+    if (is_string($converted) && $converted !== '') {
+        $short = $converted;
+    }
+    $short = strtoupper(preg_replace('/[^A-Z0-9]+/i', '', $short) ?? '');
+    return $short !== '' ? $short : 'CN';
 }
 
 /**
@@ -222,10 +325,12 @@ function getDashboardStats(string $branch): array
     $today    = date('Y-m-d');
     $invoices = getInvoices($branch);
     $products = getAllProducts($branch);
+    $allProducts = getAllProducts($branch, true);
 
     $todayOrders  = 0;
     $todayRevenue = 0;
     foreach ($invoices as $inv) {
+        if (invoiceIsCancelled($inv)) continue;
         if (str_starts_with($inv['created_at'] ?? '', $today)) {
             $todayOrders++;
             $todayRevenue += $inv['total'] ?? 0;
@@ -233,7 +338,7 @@ function getDashboardStats(string $branch): array
     }
 
     $lowStock = array_filter($products, fn($p) => ($p['stock'] ?? 0) < ($p['min_stock'] ?? 5));
-    $totalStock = array_sum(array_column($products, 'stock'));
+    $totalStock = array_sum(array_column($allProducts, 'stock'));
 
     return [
         'today_orders'   => $todayOrders,
@@ -296,6 +401,7 @@ function getRevenueReport(string $branch, string $yearMonth = ''): array
     $invoices = getInvoices($branch, $yearMonth);
     $report   = [];
     foreach ($invoices as $inv) {
+        if (invoiceIsCancelled($inv)) continue;
         $day = substr($inv['created_at'] ?? '', 0, 10);
         if (!isset($report[$day])) {
             $report[$day] = ['date' => $day, 'orders' => 0, 'revenue' => 0];
@@ -341,7 +447,7 @@ function searchInvoices(array $branches, string $keyword, int $limit = 100): arr
                 if (_invoiceMatchesKeyword($inv, $kw)) {
                     $inv['_branch']    = $branch;
                     $inv['_ym']        = $ym;
-                    $inv['_branch_name'] = BRANCHES[$branch]['name'] ?? $branch;
+                    $inv['_branch_name'] = getBranchInfo($branch)['name'] ?? $branch;
                     $results[] = $inv;
                     if (count($results) >= $limit) break 3;
                 }

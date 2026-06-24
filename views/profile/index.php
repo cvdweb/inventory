@@ -2,8 +2,11 @@
 $pageTitle = 'Tài Khoản Của Tôi';
 $currentU  = currentUser();
 $username  = $currentU['username'] ?? '';
+$profileToasts=[];
+foreach([['profile_success','success'],['profile_error','danger'],['pwd_success','success'],['pwd_error','danger']] as [$key,$type]){if(!empty($_SESSION[$key]))$profileToasts[]=['type'=>$type,'message'=>$_SESSION[$key]];unset($_SESSION[$key]);}
 include BASE_PATH . '/views/layouts/header.php';
 ?>
+<?php if($profileToasts): ?><script type="application/json" data-app-toasts><?= json_encode($profileToasts,JSON_UNESCAPED_UNICODE|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?></script><?php endif; ?>
 
 <div class="page-header d-flex align-items-center gap-3">
   <div style="width:56px;height:56px;border-radius:14px;display:grid;place-items:center;font-size:26px;
@@ -15,9 +18,8 @@ include BASE_PATH . '/views/layouts/header.php';
     <p style="margin:2px 0 0">
       <?= match($currentU['role'] ?? '') {
         'superadmin' => '<span class="badge bg-danger">Super Admin</span>',
-        'admin'      => '<span class="badge bg-warning text-dark">Quản trị viên</span>',
-        'sales'      => '<span class="badge bg-primary">Bán hàng</span>',
-        'warehouse'  => '<span class="badge bg-success">Nhập hàng</span>',
+        'admin'      => '<span class="badge bg-warning text-dark">Chủ Cửa Hàng</span>',
+        'employee'   => '<span class="badge bg-primary">Nhân Viên</span>',
         default      => ''
       } ?>
       <span class="text-muted ms-2" style="font-size:13px">@<?= htmlspecialchars($username) ?></span>
@@ -34,20 +36,6 @@ include BASE_PATH . '/views/layouts/header.php';
         <i class="bi bi-person-fill me-2 text-primary"></i>Thông Tin Cá Nhân
       </div>
       <div class="card-body">
-
-        <?php if (!empty($_SESSION['profile_success'])): ?>
-        <div class="alert alert-success alert-dismissible py-2" style="font-size:13px">
-          <i class="bi bi-check-circle-fill me-2"></i><?= htmlspecialchars($_SESSION['profile_success']) ?>
-          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-        <?php unset($_SESSION['profile_success']); endif; ?>
-
-        <?php if (!empty($_SESSION['profile_error'])): ?>
-        <div class="alert alert-danger alert-dismissible py-2" style="font-size:13px">
-          <i class="bi bi-exclamation-triangle-fill me-2"></i><?= htmlspecialchars($_SESSION['profile_error']) ?>
-          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-        <?php unset($_SESSION['profile_error']); endif; ?>
 
         <form method="POST" action="index.php?page=profile&action=update_info">
         <?= csrfField() ?>
@@ -69,7 +57,7 @@ include BASE_PATH . '/views/layouts/header.php';
             $branches    = getUserBranches();
             $branchNames = empty($branches)
               ? '— Tất cả chi nhánh —'
-              : implode(', ', array_map(fn($b) => BRANCHES[$b]['name'] ?? $b, $branches));
+              : implode(', ', array_map(fn($b) => getBranchInfo($b)['name'] ?? $b, $branches));
             ?>
             <input type="text" class="form-control" value="<?= htmlspecialchars($branchNames) ?>"
               readonly style="background:#f9fafb">
@@ -91,20 +79,6 @@ include BASE_PATH . '/views/layouts/header.php';
       </div>
       <div class="card-body">
 
-        <?php if (!empty($_SESSION['pwd_success'])): ?>
-        <div class="alert alert-success alert-dismissible py-2" style="font-size:13px">
-          <i class="bi bi-check-circle-fill me-2"></i><?= htmlspecialchars($_SESSION['pwd_success']) ?>
-          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-        <?php unset($_SESSION['pwd_success']); endif; ?>
-
-        <?php if (!empty($_SESSION['pwd_error'])): ?>
-        <div class="alert alert-danger alert-dismissible py-2" style="font-size:13px">
-          <i class="bi bi-exclamation-triangle-fill me-2"></i><?= htmlspecialchars($_SESSION['pwd_error']) ?>
-          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-        <?php unset($_SESSION['pwd_error']); endif; ?>
-
         <form method="POST" action="index.php?page=profile&action=change_password">
         <?= csrfField() ?>
           <div class="mb-3">
@@ -120,7 +94,7 @@ include BASE_PATH . '/views/layouts/header.php';
             <label class="form-label">Mật khẩu mới *</label>
             <div class="input-group">
               <input type="password" name="new_password" id="newPwd"
-                class="form-control" required minlength="6"
+                class="form-control" required minlength="<?= PASSWORD_MIN_LENGTH ?>"
                 placeholder="Tối thiểu 6 ký tự"
                 oninput="checkStrength(this.value)">
               <button type="button" class="btn btn-outline-secondary"
@@ -209,8 +183,9 @@ function checkStrength(val) {
 function validatePwd() {
   const np = document.getElementById('newPwd').value;
   const cp = document.getElementById('confirmPwd').value;
-  if (np.length < 6)  { alert('Mật khẩu mới phải ít nhất 6 ký tự!'); return false; }
-  if (np !== cp)       { alert('Mật khẩu xác nhận không khớp!'); return false; }
+  if (np.length < <?= PASSWORD_MIN_LENGTH ?>)  { showToast('Mật khẩu mới phải ít nhất <?= PASSWORD_MIN_LENGTH ?> ký tự.', 'warning'); return false; }
+  if (!/[A-Za-z]/.test(np) || !/\d/.test(np)) { showToast('Mật khẩu phải có ít nhất một chữ và một số.', 'warning'); return false; }
+  if (np !== cp)       { showToast('Mật khẩu xác nhận không khớp.', 'warning'); return false; }
   return true;
 }
 </script>

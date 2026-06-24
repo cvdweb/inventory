@@ -1,0 +1,41 @@
+{
+  "name": "Quản Lý Trường Phú",
+  "short_name": "Trường Phú",
+  "description": "Hệ thống quản lý nhập xuất, hóa đơn, công nợ và tồn kho.",
+  "start_url": "./index.php",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f0f2f5",
+  "theme_color": "#111827",
+  "categories": ["business", "productivity"],
+  "lang": "vi",
+  "icons": [
+    {
+      "src": "assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Lập hóa đơn VLXD",
+      "short_name": "Hóa đơn",
+      "url": "./index.php?page=invoice&branch=branch_1_vlxd",
+      "icons": [{ "src": "assets/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Công nợ VLXD",
+      "short_name": "Công nợ",
+      "url": "./index.php?page=receivables&branch=branch_1_vlxd",
+      "icons": [{ "src": "assets/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Danh sách hóa đơn",
+      "short_name": "Hóa đơn",
+      "url": "./index.php?page=invoices&branch=branch_1_vlxd",
+      "icons": [{ "src": "assets/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ]
+}

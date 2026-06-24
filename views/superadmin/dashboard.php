@@ -1,6 +1,6 @@
 <?php
 $pageTitle  = 'Bảng Điều Khiển Kỹ Thuật';
-$backupPath = BASE_PATH . '/backups';
+$backupPath = backupDir();
 $backups    = glob($backupPath . '/backup_*.zip') ?: [];
 usort($backups, fn($a,$b) => filemtime($b) <=> filemtime($a));
 $lastBackup    = !empty($backups) ? date('d/m/Y H:i', filemtime($backups[0])) : 'Chưa có';
@@ -12,6 +12,16 @@ if (is_dir(DATA_PATH)) {
     }
 }
 $users = getAllUsers();
+$license = licenseGet();
+$licenseStatus = licenseStatus($license);
+$licensePayments = $license['payments'] ?? [];
+$lastLicensePayment = !empty($licensePayments) ? end($licensePayments) : null;
+$licensePackageLabel = $lastLicensePayment
+    ? ((int)($lastLicensePayment['package_months'] ?? 0) . ' tháng')
+    : 'Chưa thanh toán';
+if ($lastLicensePayment && (int)($lastLicensePayment['free_months'] ?? 0) > 0) {
+    $licensePackageLabel .= ' (tặng ' . (int)$lastLicensePayment['free_months'] . ' tháng)';
+}
 include BASE_PATH . '/views/layouts/header.php';
 ?>
 
@@ -64,6 +74,39 @@ include BASE_PATH . '/views/layouts/header.php';
 
 <div class="row g-3">
 
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header fw-700 d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-key-fill me-2 text-danger"></i>Giấy Phép Sử Dụng</span>
+        <a href="index.php?page=license" class="btn btn-sm btn-outline-danger">Quản lý giấy phép</a>
+      </div>
+      <div class="card-body">
+        <div class="row g-3 align-items-center">
+          <div class="col-md-3">
+            <div class="text-muted" style="font-size:12px">Khách hàng</div>
+            <div class="fw-800"><?= htmlspecialchars($license['customer']['name'] ?? '') ?></div>
+          </div>
+          <div class="col-md-3">
+            <div class="text-muted" style="font-size:12px">Gói thanh toán gần nhất</div>
+            <div class="fw-800"><?= htmlspecialchars($licensePackageLabel) ?></div>
+          </div>
+          <div class="col-md-2">
+            <div class="text-muted" style="font-size:12px">Bắt đầu tính phí</div>
+            <div class="fw-800"><?= date('d/m/Y', strtotime($license['customer']['started_at'] ?? date('Y-m-d'))) ?></div>
+          </div>
+          <div class="col-md-2">
+            <div class="text-muted" style="font-size:12px">Hết hạn</div>
+            <div class="fw-800"><?= date('d/m/Y', strtotime($licenseStatus['end_date'])) ?></div>
+          </div>
+          <div class="col-md-2">
+            <div class="text-muted" style="font-size:12px">Còn lại</div>
+            <div class="fw-800 <?= $licenseStatus['days_remaining'] < 0 ? 'text-danger' : ($licenseStatus['days_remaining'] <= 15 ? 'text-warning' : 'text-success') ?>"><?= (int)$licenseStatus['days_remaining'] ?> ngày</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Danh sách tài khoản -->
   <div class="col-md-6">
     <div class="card">
@@ -76,8 +119,8 @@ include BASE_PATH . '/views/layouts/header.php';
           <thead><tr><th>Tài khoản</th><th>Họ tên</th><th>Vai trò</th><th>Trạng thái</th></tr></thead>
           <tbody>
           <?php
-          $roleColors = ['superadmin'=>'danger','owner'=>'warning','admin'=>'info','sales'=>'primary','warehouse'=>'success'];
-          $roleLabels = ['superadmin'=>'Kỹ Thuật','owner'=>'Chủ CH','admin'=>'Quản lý','sales'=>'Bán hàng','warehouse'=>'Nhập hàng'];
+          $roleColors = ['superadmin'=>'danger','admin'=>'warning','employee'=>'primary'];
+          $roleLabels = ['superadmin'=>'Super Admin','admin'=>'Chủ cửa hàng','employee'=>'Nhân viên'];
           foreach ($users as $u):
             $active = $u['active'] ?? true;
           ?>

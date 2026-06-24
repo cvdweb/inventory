@@ -1,9 +1,15 @@
+<?php
+$loginLicense = function_exists('licenseGet') ? licenseGet() : [];
+$loginCustomer = $loginLicense['customer'] ?? [];
+$loginBusinessName = trim($loginCustomer['name'] ?? '') ?: (BUSINESS['name'] ?? APP_NAME);
+$loginSystemName = trim($loginCustomer['system_name'] ?? '') ?: APP_NAME;
+?>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Đăng Nhập — <?= APP_NAME ?></title>
+<title>Đăng Nhập — <?= htmlspecialchars($loginBusinessName) ?></title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -15,21 +21,9 @@
   <div class="login-card">
     <div class="login-logo">
       <div class="logo-icon"><i class="bi bi-box-seam-fill"></i></div>
-      <h1><?= APP_NAME ?></h1>
-      <p>Hệ thống quản lý nhập xuất hàng hóa</p>
+      <h1><?= htmlspecialchars($loginBusinessName) ?></h1>
+      <p><?= htmlspecialchars($loginSystemName) ?></p>
     </div>
-
-    <?php if (!empty($error)): ?>
-    <div class="alert alert-danger py-2 mb-3" style="font-size:13px">
-      <i class="bi bi-exclamation-triangle-fill me-2"></i><?= htmlspecialchars($error) ?>
-    </div>
-    <?php endif; ?>
-
-    <?php if (!empty($_GET['timeout'])): ?>
-    <div class="alert alert-warning py-2 mb-3" style="font-size:13px">
-      <i class="bi bi-clock me-2"></i>Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.
-    </div>
-    <?php endif; ?>
 
     <form method="POST" action="index.php?page=login">
       <?= csrfField() ?>
@@ -53,18 +47,11 @@
       </button>
     </form>
 
-    <!-- <hr class="my-4">
-    <div class="text-muted d-none" style="font-size:12px">
-      <div class="fw-700 mb-2">Tài khoản mặc định:</div>
-      <div class="d-flex flex-column gap-1">
-        <div><code>admin</code> / <code>admin123</code> — Quản trị viên</div>
-        <div><code>nv_vlxd</code> / <code>vlxd123</code> — BH Vật Liệu XD</div>
-        <div><code>nv_maiton</code> / <code>maiton123</code> — BH Mái Tôn</div>
-        <div><code>nv_nhaphang</code> / <code>nhap123</code> — Nhập Hàng</div>
-      </div>
-    </div> -->
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<?php $loginToasts=[]; if(!empty($error))$loginToasts[]=['type'=>'danger','message'=>$error,'duration'=>8000]; if(!empty($_GET['timeout']))$loginToasts[]=['type'=>'warning','message'=>'Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.','duration'=>7000]; ?>
+<?php if($loginToasts): ?><script type="application/json" data-app-toasts><?= json_encode($loginToasts,JSON_UNESCAPED_UNICODE|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?></script><?php endif; ?>
+<script src="assets/js/toast.js?v=<?= filemtime(BASE_PATH . '/assets/js/toast.js') ?>"></script>
 </body>
 </html>

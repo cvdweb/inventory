@@ -174,7 +174,18 @@ try {
 
     $beforeSync = integrityCheckBranch($branch);
     assertTrue(count(array_filter($beforeSync['issues'], fn($i) => $i['code'] === 'invoice_income_missing')) === 1, 'Phải phát hiện hóa đơn thiếu bút toán thu');
-    assertTrue(cashbookSyncInvoice($branch, $invoice)['success'], 'Đồng bộ hóa đơn thất bại');
+    assertTrue(($beforeSync['total_records'] ?? 0) > 0 && ($beforeSync['scopes']['invoices']['count'] ?? 0) === 1, 'Báo cáo phải ghi đúng phạm vi dữ liệu đã quét');
+    $repairPlan = integrityBuildRepairPlan($branch, $beforeSync);
+    assertTrue(count($repairPlan) === 1 && ($repairPlan[0]['source_id'] ?? '') === 'INV-TEST-1', 'Kế hoạch sửa phải chỉ chứa hóa đơn bị sai lệch');
+    $repairResult = integrityRepairLinks($branch);
+    assertTrue($repairResult['success'], 'Đồng bộ hóa đơn thất bại');
+    assertTrue(count(array_filter(integrityCheckBranch($branch)['issues'], fn($i) => $i['code'] === 'invoice_income_missing')) === 0, 'Sai lệch phải biến mất sau khi khắc phục');
+    $integrityHistory = integrityGetHistory($branch);
+    assertTrue(count($integrityHistory) === 1 && ($integrityHistory[0]['type'] ?? '') === 'repair', 'Khắc phục phải được lưu vào lịch sử');
+    assertTrue(($integrityHistory[0]['actions'][0]['status'] ?? '') === 'resolved', 'Lịch sử phải ghi nhận thao tác đã khắc phục thành công');
+    assertTrue(integrityRecordCheck($branch)['success'], 'Không lưu được lịch sử kiểm tra thủ công');
+    $integrityHistory = integrityGetHistory($branch);
+    assertTrue(count($integrityHistory) === 2 && ($integrityHistory[0]['type'] ?? '') === 'check', 'Lịch sử phải lưu riêng lần kiểm tra không sửa dữ liệu');
 
     $salesReturn = salesReturnCreate($branch, [
         'invoice_id' => 'INV-TEST-1', 'reason' => 'Khách trả thử nghiệm', 'refund_method' => 'cash',

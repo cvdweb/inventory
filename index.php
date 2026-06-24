@@ -327,10 +327,18 @@ if ($page==='integrity') {
         $_SESSION['flash']=['type'=>'danger','message'=>'Không có quyền truy cập chi nhánh này'];
         header('Location: index.php'); exit;
     }
-    if (($_GET['action']??'')==='repair' && $_SERVER['REQUEST_METHOD']==='POST') {
+    $integrityAction = $_GET['action'] ?? '';
+    if ($integrityAction === 'check' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $r=withBranchTransaction($branch, fn()=>integrityRecordCheck($branch));
+        $_SESSION['flash']=['type'=>$r['success']?'success':'danger','message'=>$r['message']];
+        $runId = $r['run']['id'] ?? '';
+        header('Location: index.php?page=integrity&branch='.urlencode($branch).'&tab=history'.($runId ? '&run='.urlencode($runId) : '')); exit;
+    }
+    if ($integrityAction==='repair' && $_SERVER['REQUEST_METHOD']==='POST') {
         $r=withBranchTransaction($branch, fn()=>integrityRepairLinks($branch));
         $_SESSION['flash']=['type'=>$r['success']?'success':'danger','message'=>$r['message']];
-        header('Location: index.php?page=integrity&branch='.urlencode($branch)); exit;
+        $runId = $r['run_id'] ?? '';
+        header('Location: index.php?page=integrity&branch='.urlencode($branch).'&tab=history'.($runId ? '&run='.urlencode($runId) : '')); exit;
     }
 }
 

@@ -60,15 +60,14 @@ inventory_app/
 
 ---
 
-## 👤 Phân Quyền
+## 👤 Tài Khoản Mặc Định
 
-| Vai trò | Phạm vi |
-|---------|---------|
-| `superadmin` | Quản trị hệ thống, giấy phép và hỗ trợ kỹ thuật |
-| `admin` | Chủ cửa hàng, toàn bộ nghiệp vụ và tất cả chi nhánh |
-| `employee` | Nghiệp vụ hằng ngày tại các chi nhánh được phân công |
-
-Tài khoản được tạo và quản lý tại trang **Tài Khoản Nhân Viên**. Hệ thống không cung cấp mật khẩu mặc định cho bản production.
+| Tài khoản     | Mật khẩu    | Vai trò              | Quyền                        |
+|---------------|-------------|----------------------|------------------------------|
+| `admin`       | `admin123`  | Quản trị viên        | Tất cả chức năng             |
+| `nv_vlxd`     | `vlxd123`   | NV Bán Hàng VLXD     | Bán hàng chi nhánh VLXD      |
+| `nv_maiton`   | `maiton123` | NV Bán Hàng Mái Tôn  | Bán hàng chi nhánh Mái Tôn   |
+| `nv_nhaphang` | `nhap123`   | NV Nhập Hàng         | Nhập hàng tất cả chi nhánh   |
 
 ---
 
@@ -111,27 +110,26 @@ http://yourdomain.com/inventory_app/
 
 ---
 
-## 🔒 An Toàn Dữ Liệu JSON
+## 🔒 Bảo Mật JSON với flock()
 
-- Đọc/ghi dùng khóa file để tránh xung đột đồng thời.
-- Dữ liệu được ghi hoàn tất vào file tạm trước khi thay file thật.
-- Trên Windows, hệ thống giữ bản trung gian để phục hồi nếu thao tác thay file thất bại.
-- Các nghiệp vụ nhiều file như hóa đơn, tồn kho và sổ thu chi dùng khóa giao dịch cấp chi nhánh.
-- Cấu trúc JSON hiện có được giữ nguyên; nâng cấp code không tự thay đổi chứng từ cũ.
+Tất cả thao tác đọc/ghi file đều dùng `flock()`:
 
----
+```php
+// Ghi file - khóa độc quyền
+$fp = fopen($file, 'c+');
+flock($fp, LOCK_EX);    // Chờ đến khi có thể ghi
+ftruncate($fp, 0);
+rewind($fp);
+fwrite($fp, json_encode($data));
+fflush($fp);
+flock($fp, LOCK_UN);    // Giải phóng khóa
+fclose($fp);
 
-## Chế Độ Sử Dụng
-
-Superadmin cấu hình tại **Quản Lý Giấy Phép → Chế Độ Sử Dụng Của Khách Hàng**:
-
-- `basic`: sản phẩm, nhập hàng, hóa đơn và trả hàng theo hóa đơn.
-- `standard`: thêm nhập hàng loạt, công nợ, kiểm kê và báo cáo.
-- `full`: thêm thu chi và kiểm tra toàn vẹn dữ liệu.
-
-Cấu hình được lưu tại `data/feature_settings.json`. Nếu file chưa tồn tại, hệ thống mặc định dùng `full` để bảo đảm việc nâng cấp code không làm ẩn chức năng trên hệ thống đang vận hành. Đổi chế độ không xóa dữ liệu và các bút toán tự động vẫn tiếp tục được ghi nền.
-
-Khi triển khai code mới lên hosting đang có dữ liệu, không ghi đè thư mục `data/`. Sau khi deploy, superadmin có thể chọn chế độ phù hợp trong giao diện.
+// Đọc file - khóa chia sẻ
+flock($fp, LOCK_SH);    // Nhiều người đọc cùng lúc OK
+$content = stream_get_contents($fp);
+flock($fp, LOCK_UN);
+```
 
 ---
 
@@ -162,7 +160,17 @@ Hệ thống tự tạo file JSON khi có sản phẩm đầu tiên.
 
 ## 📝 Thêm Tài Khoản Người Dùng
 
-Đăng nhập bằng `superadmin` hoặc `admin`, mở trang **Tài Khoản Nhân Viên** và tạo tài khoản mới. Mật khẩu được lưu bằng `password_hash()`; không chỉnh trực tiếp `data/users.json`.
+Trong `config/config.php`, thêm vào `USERS`:
+```php
+'nv2_vlxd' => [
+    'username' => 'nv2_vlxd',
+    'password' => md5('matkhau'),
+    'name'     => 'Nhân Viên 2 VLXD',
+    'role'     => 'sales',      // admin | sales | warehouse
+    'branch'   => 'branch_1_vlxd',
+    'icon'     => 'bi-person-badge',
+],
+```
 
 ---
 

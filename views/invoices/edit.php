@@ -23,10 +23,11 @@ include BASE_PATH . '/views/layouts/header.php';
 ?>
 
 <style>
-.pos-wrap{display:flex;flex-direction:column;gap:12px;height:calc(100vh - 130px)}
-.pos-main{display:grid;grid-template-columns:360px 1fr;gap:12px;flex:1;min-height:0}
+.pos-wrap{display:flex;flex-direction:column;gap:12px;height:calc(100vh - 112px)}
+.pos-main{display:grid;grid-template-columns:clamp(400px,34vw,560px) 1fr;gap:12px;flex:1;min-height:0}
 .pos-left{display:flex;flex-direction:column;background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;min-height:0}
-.pos-left-search{flex-shrink:0;padding:12px;border-bottom:1px solid var(--border)}
+.pos-left-search{flex-shrink:0;padding:14px;border-bottom:1px solid var(--border)}
+.pos-left-search .form-control{height:46px;font-size:15px;border-radius:10px}
 .pos-left-cats{flex:1;overflow-y:auto;padding:10px}
 .pos-right{display:flex;flex-direction:column;background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;min-height:0}
 .pos-right-header{flex-shrink:0;padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px}
@@ -34,11 +35,12 @@ include BASE_PATH . '/views/layouts/header.php';
 .pos-right-footer{flex-shrink:0;border-top:2px solid var(--border);background:var(--bg-main)}
 .inv-row{display:grid;grid-template-columns:1fr 100px 130px 120px 36px;gap:8px;align-items:center;padding:9px 14px;border-bottom:1px solid #f3f4f6;transition:background .1s}
 .inv-row:hover{background:#fafafa}
-.cat-item{padding:9px 10px;cursor:pointer;border-bottom:1px solid #f3f4f6;border-radius:6px;margin-bottom:2px;transition:background .1s}
-.cat-item:hover{background:#fffbeb}
+.cat-item{padding:14px;cursor:pointer;border:1px solid #edf0f3;border-radius:10px;margin-bottom:8px;transition:background .1s,border-color .1s}
+.cat-item:hover{background:#fffbeb;border-color:#fcd34d}
+.cat-toggle{min-height:46px}
 @keyframes flashRow{0%{background:#fef3c7}100%{background:transparent}}
 .inv-row.flash{animation:flashRow .5s ease}
-@media(max-width:900px){.pos-main{grid-template-columns:1fr}.pos-left{max-height:40vh}.pos-wrap{height:auto}}
+@media(max-width:1200px){.pos-main{grid-template-columns:1fr}.pos-left{max-height:44vh}.pos-wrap{height:auto}}
 </style>
 
 <!-- Cảnh báo đang sửa -->
@@ -143,18 +145,18 @@ include BASE_PATH . '/views/layouts/header.php';
     <!-- Cột trái: tìm sản phẩm -->
     <div class="pos-left">
       <div class="pos-left-search">
-        <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:#374151">
+        <div style="font-weight:800;font-size:14px;margin-bottom:10px;color:#111827">
           <i class="bi bi-search me-2 text-warning"></i>Thêm Sản Phẩm
-          <span style="font-size:11px;font-weight:400;color:#9ca3af;float:right"><?= count($allProducts) ?> SP</span>
+          <span style="font-size:11px;font-weight:500;color:#9ca3af;float:right"><?= count($allProducts) ?> SP</span>
         </div>
         <div style="position:relative">
-          <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9ca3af;pointer-events:none"><i class="bi bi-search"></i></span>
+          <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#9ca3af;pointer-events:none"><i class="bi bi-search"></i></span>
           <input type="text" id="productSearch" class="form-control form-control-sm"
-            style="padding-left:32px" placeholder="Nhập mã hoặc tên..."
+            style="padding-left:36px;font-size:15px" placeholder="Nhập mã hoặc tên..."
             autocomplete="off" oninput="doSearch(this.value)" onfocus="doSearch(this.value)">
           <div id="productDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;
-            background:#fff;border:1.5px solid #e5e7eb;border-radius:8px;
-            box-shadow:0 8px 24px rgba(0,0,0,.14);z-index:9999;max-height:260px;overflow-y:auto"></div>
+            background:#fff;border:1.5px solid #e5e7eb;border-radius:10px;
+            box-shadow:0 8px 24px rgba(0,0,0,.14);z-index:9999;max-height:min(60vh,420px);overflow-y:auto"></div>
         </div>
       </div>
       <div class="pos-left-cats">
@@ -164,8 +166,8 @@ include BASE_PATH . '/views/layouts/header.php';
           if (!$cp) continue; ?>
         <div class="mb-2">
           <button type="button"
-            class="btn btn-sm w-100 text-start d-flex justify-content-between align-items-center"
-            style="background:#f9fafb;border:1px solid #e5e7eb;font-weight:700;font-size:12.5px;padding:6px 10px"
+            class="cat-toggle btn btn-sm w-100 text-start d-flex justify-content-between align-items-center"
+            style="background:#f9fafb;border:1px solid #e5e7eb;font-weight:800;font-size:14px;padding:11px 14px"
             onclick="toggleCat('cat_<?= $ck ?>','chev_<?= $ck ?>')">
             <span><i class="bi <?= htmlspecialchars($catInfo['icon']??'bi-box') ?> me-2" style="color:#8b5cf6"></i><?= htmlspecialchars($catInfo['name']) ?></span>
             <span class="d-flex align-items-center gap-1">
@@ -180,11 +182,11 @@ include BASE_PATH . '/views/layouts/header.php';
                 'price_out'=>(float)($p['price_out']??0),'stock'=>(float)($p['stock']??0)],
                 JSON_UNESCAPED_UNICODE); ?>
             <div class="cat-item" onclick='addItem(<?= $pj ?>)'>
-              <div style="font-weight:600;font-size:13px"><?= htmlspecialchars($p['name']) ?></div>
-              <div class="d-flex justify-content-between mt-1">
-                <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#9ca3af"><?= htmlspecialchars($p['code']) ?></span>
-                <span style="font-size:11px;font-weight:700;color:<?= $low?'#ef4444':'#10b981' ?>"><?= number_format($p['stock']??0,2,',','.') ?> <?= htmlspecialchars($p['unit']) ?></span>
-                <span style="font-size:11px;font-weight:700;color:#f59e0b"><?= number_format($p['price_out']??0,0,',','.') ?> &#8363;</span>
+              <div style="font-weight:700;font-size:15px;line-height:1.35"><?= htmlspecialchars($p['name']) ?></div>
+              <div class="d-flex justify-content-between align-items-center mt-1">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9ca3af"><?= htmlspecialchars($p['code']) ?></span>
+                <span style="font-size:12.5px;font-weight:800;color:<?= $low?'#ef4444':'#10b981' ?>"><?= number_format($p['stock']??0,2,',','.') ?> <?= htmlspecialchars($p['unit']) ?></span>
+                <span style="font-size:13px;font-weight:800;color:#f59e0b"><?= number_format($p['price_out']??0,0,',','.') ?> &#8363;</span>
               </div>
             </div>
             <?php endforeach; ?>
@@ -287,12 +289,12 @@ function doSearch(val) {
   if (!res.length) { dd.innerHTML='<div style="padding:12px 14px;font-size:13px;color:#9ca3af">Không tìm thấy</div>'; dd.style.display='block'; return; }
   dd.innerHTML = res.map(p=>{
     const low=p.stock<(p.min_stock||5);
-    return `<div onclick='addItem(${JSON.stringify(p)})' style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f3f4f6" onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background=''">
-      <div style="font-weight:600;font-size:13.5px">${esc(p.name)}</div>
-      <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">
-        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9ca3af">${esc(p.code)}</span>
-        <span style="font-size:11px;font-weight:700;color:${low?'#ef4444':'#10b981'}">Tồn: ${fmt(p.stock)} ${esc(p.unit)}</span>
-        <span style="font-size:12px;font-weight:800;color:#f59e0b;margin-left:auto">${fmtM(p.price_out)}</span>
+    return `<div onclick='addItem(${JSON.stringify(p)})' style="padding:13px 16px;cursor:pointer;border-bottom:1px solid #f3f4f6" onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background=''">
+      <div style="font-weight:700;font-size:14.5px">${esc(p.name)}</div>
+      <div style="display:flex;gap:10px;margin-top:5px;flex-wrap:wrap;align-items:center">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#9ca3af">${esc(p.code)}</span>
+        <span style="font-size:12px;font-weight:700;color:${low?'#ef4444':'#10b981'}">Tồn: ${fmt(p.stock)} ${esc(p.unit)}</span>
+        <span style="font-size:13px;font-weight:800;color:#f59e0b;margin-left:auto">${fmtM(p.price_out)}</span>
       </div></div>`;
   }).join('');
   dd.style.display='block';
@@ -304,9 +306,21 @@ document.addEventListener('click', e => {
 function addItem(p) {
   document.getElementById('productDropdown').style.display='none';
   document.getElementById('productSearch').value='';
+  const stock = parseFloat(p.stock)||0;
   const ex = invoiceItems.find(i=>i.code===p.code);
-  if (ex) { ex.qty+=1; ex.line_total=ex.qty*ex.price_out; }
-  else invoiceItems.push({code:p.code,name:p.name,unit:p.unit,qty:1,price_out:parseFloat(p.price_out)||0,line_total:parseFloat(p.price_out)||0,stock:parseFloat(p.stock)||0});
+  if (ex) { 
+    if (ex.qty + 1 > stock) {
+      if (typeof showToast === 'function') showToast(`Tồn kho chỉ còn ${fmt(stock)} ${p.unit}`, 'warning');
+      return;
+    }
+    ex.qty+=1; ex.line_total=ex.qty*ex.price_out; 
+  } else {
+    if (1 > stock) {
+      if (typeof showToast === 'function') showToast(`Sản phẩm đã hết hàng trong kho.`, 'warning');
+      return;
+    }
+    invoiceItems.push({code:p.code,name:p.name,unit:p.unit,qty:1,price_out:parseFloat(p.price_out)||0,line_total:parseFloat(p.price_out)||0,stock:stock});
+  }
   renderItems();
   setTimeout(()=>{ const r=document.getElementById('row_'+p.code); if(r){r.classList.add('flash');setTimeout(()=>r.classList.remove('flash'),600);} const c=document.getElementById('invoiceItems'); if(c)c.scrollTop=c.scrollHeight; },30);
 }

@@ -57,29 +57,29 @@ $topbarContext = trim((string)($topbarParts[1] ?? ''));
     <?php if (canViewBusinessData()): ?>
     <?php foreach (getAccessibleBranches() as $bId => $b): ?>
     <div class="nav-section"><?= $b['short'] ?> — <?= $b['name'] ?></div>
-    <a href="index.php?page=products&branch=<?= $bId ?>" class="nav-item <?= ($page === 'products' && ($reqBranch ?? '') === $bId) ? 'active' : '' ?>">
-      <i class="bi bi-box2-fill"></i><span>Sản Phẩm</span>
-    </a>
-    <a href="index.php?page=imports&branch=<?= $bId ?>" class="nav-item <?= ($page === 'imports' && ($reqBranch ?? '') === $bId) ? 'active' : '' ?>">
-      <i class="bi bi-download"></i><span>Nhập Hàng</span>
-    </a>
-    <?php if (featureEnabled('inventory')): ?><a href="index.php?page=inventory&branch=<?= $bId ?>" class="nav-item <?= ($page === 'inventory' && ($reqBranch ?? '') === $bId) ? 'active' : '' ?>">
-      <i class="bi bi-clipboard-check-fill"></i><span>Kiểm Kê Kho</span>
-    </a><?php endif; ?>
     <a href="index.php?page=invoice&branch=<?= $bId ?>" class="nav-item <?= ($page === 'invoice' && ($reqBranch ?? '') === $bId) ? 'active' : '' ?>">
       <i class="bi bi-receipt"></i><span>Lập Hóa Đơn</span>
     </a>
     <a href="index.php?page=invoices&branch=<?= $bId ?>" class="nav-item <?= ($page === 'invoices' && ($reqBranch ?? '') === $bId) ? 'active' : '' ?>">
       <i class="bi bi-journal-text"></i><span>DS Hóa Đơn</span>
     </a>
+    <a href="index.php?page=products&branch=<?= $bId ?>" class="nav-item <?= ($page === 'products' && ($reqBranch ?? '') === $bId) ? 'active' : '' ?>">
+      <i class="bi bi-box2-fill"></i><span>Sản Phẩm</span>
+    </a>
+    <a href="index.php?page=imports&branch=<?= $bId ?>" class="nav-item <?= ($page === 'imports' && ($reqBranch ?? '') === $bId) ? 'active' : '' ?>">
+      <i class="bi bi-download"></i><span>Nhập Hàng</span>
+    </a>
     <?php if (featureEnabled('returns_menu')): ?><a href="index.php?page=returns&branch=<?= $bId ?>" class="nav-item <?= ($page === 'returns' && ($reqBranch ?? '') === $bId) ? 'active' : '' ?>">
       <i class="bi bi-arrow-return-left"></i><span>Trả Hàng</span>
+    </a><?php endif; ?>
+    <?php if (featureEnabled('cashbook')): ?><a href="index.php?page=cashbook&branch=<?= $bId ?>" class="nav-item <?= ($page === 'cashbook' && ($reqBranch ?? '') === $bId) ? 'active' : '' ?>">
+      <i class="bi bi-cash-stack"></i><span>Thu Chi</span>
     </a><?php endif; ?>
     <?php if (featureEnabled('receivables')): ?><a href="index.php?page=receivables&branch=<?= $bId ?>" class="nav-item <?= ($page === 'receivables' && ($reqBranch ?? '') === $bId) ? 'active' : '' ?>">
       <i class="bi bi-wallet2"></i><span>Công Nợ</span>
     </a><?php endif; ?>
-    <?php if (featureEnabled('cashbook')): ?><a href="index.php?page=cashbook&branch=<?= $bId ?>" class="nav-item <?= ($page === 'cashbook' && ($reqBranch ?? '') === $bId) ? 'active' : '' ?>">
-      <i class="bi bi-cash-stack"></i><span>Thu Chi</span>
+    <?php if (featureEnabled('inventory')): ?><a href="index.php?page=inventory&branch=<?= $bId ?>" class="nav-item <?= ($page === 'inventory' && ($reqBranch ?? '') === $bId) ? 'active' : '' ?>">
+      <i class="bi bi-clipboard-check-fill"></i><span>Kiểm Kê Kho</span>
     </a><?php endif; ?>
     <?php if (in_array($user['role'] ?? '', ['superadmin', 'admin'], true) && featureEnabled('reports')): ?>
     <a href="index.php?page=reports&branch=<?= $bId ?>" class="nav-item <?= ($page === 'reports' && ($reqBranch ?? '') === $bId) ? 'active' : '' ?>">

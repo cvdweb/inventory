@@ -222,7 +222,11 @@ function canAccessBranch(string $branch): bool
     $user = currentUser();
     $role = $user['role'] ?? '';
     if ($role === 'superadmin') return true;
-    if ($role === 'admin') return true;
+    if ($role === 'admin') {
+        $allowed = getUserBranches();
+        if (empty($allowed)) return true;
+        return in_array($branch, $allowed, true);
+    }
     return in_array($branch, getUserBranches(), true);
 }
 
@@ -232,9 +236,10 @@ function getAccessibleBranches(): array
     $branches = getBranches();
     $role     = $user['role'] ?? '';
     if ($role === 'superadmin') return $branches;
-    if ($role === 'admin') return $branches;
 
     $allowed = getUserBranches();
+    if ($role === 'admin' && empty($allowed)) return $branches;
+
     if (empty($allowed)) return [];
     return array_filter($branches, fn($b) => in_array($b['id'], $allowed, true));
 }

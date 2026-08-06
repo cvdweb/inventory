@@ -38,6 +38,7 @@ include BASE_PATH . '/views/layouts/header.php';
       <div class="stat-icon"><i class="bi bi-calendar-check"></i></div>
       <div class="stat-value" style="font-size:18px"><?= date('d/m/Y', strtotime($status['end_date'])) ?></div>
       <div class="stat-label">Ngày hết hạn</div>
+      <div class="stat-bg"><i class="bi bi-calendar-check"></i></div>
     </div>
   </div>
   <div class="col-6 col-md-3">
@@ -45,6 +46,7 @@ include BASE_PATH . '/views/layouts/header.php';
       <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
       <div class="stat-value"><?= (int)$status['days_remaining'] ?></div>
       <div class="stat-label">Ngày còn lại</div>
+      <div class="stat-bg"><i class="bi bi-hourglass-split"></i></div>
     </div>
   </div>
   <div class="col-6 col-md-3">
@@ -52,6 +54,7 @@ include BASE_PATH . '/views/layouts/header.php';
       <div class="stat-icon"><i class="bi bi-cash-stack"></i></div>
       <div class="stat-value" style="font-size:18px"><?= licenseFormatMoney($totalPaid) ?></div>
       <div class="stat-label">Tổng đã thanh toán</div>
+      <div class="stat-bg"><i class="bi bi-cash-stack"></i></div>
     </div>
   </div>
   <div class="col-6 col-md-3">
@@ -59,6 +62,7 @@ include BASE_PATH . '/views/layouts/header.php';
       <div class="stat-icon"><i class="bi bi-tag-fill"></i></div>
       <div class="stat-value" style="font-size:18px"><?= licenseFormatMoney($monthlyPrice) ?></div>
       <div class="stat-label">Phí mỗi tháng</div>
+      <div class="stat-bg"><i class="bi bi-tag-fill"></i></div>
     </div>
   </div>
 </div>
@@ -71,9 +75,9 @@ include BASE_PATH . '/views/layouts/header.php';
 <?php endif; ?>
 
 <div class="card mb-4" id="featureProfileCard">
-  <div class="card-header d-flex align-items-center justify-content-between gap-2"><span><i class="bi bi-ui-checks-grid me-2 text-primary"></i>Chế Độ Sử Dụng Của Khách Hàng</span><span class="badge bg-primary"><?= htmlspecialchars($featureProfiles[$currentFeatureProfile]['label'] ?? 'Đầy đủ') ?></span></div>
+  <div class="card-header d-flex align-items-center justify-content-between gap-2"><span><i class="bi bi-ui-checks-grid me-2" style="color:var(--accent)"></i>Chế Độ Sử Dụng Của Khách Hàng</span><span class="badge" style="background:var(--accent);color:#fff"><?= htmlspecialchars($featureProfiles[$currentFeatureProfile]['label'] ?? 'Đầy đủ') ?></span></div>
   <div class="card-body">
-    <div class="alert alert-light border feature-profile-note"><i class="bi bi-info-circle text-primary"></i><span>Chuyển chế độ chỉ thu gọn giao diện và quyền truy cập, không xóa dữ liệu. Superadmin luôn nhìn thấy toàn bộ chức năng để hỗ trợ khách hàng.</span></div>
+    <div class="p-3 rounded-3 mb-3 feature-profile-note" style="background:var(--bg-main);border:1px solid var(--border)"><i class="bi bi-info-circle" style="color:var(--accent);margin-top:2px"></i><span>Chuyển chế độ chỉ thu gọn giao diện và quyền truy cập, không xóa dữ liệu. Superadmin luôn nhìn thấy toàn bộ chức năng để hỗ trợ khách hàng.</span></div>
     <form method="POST" action="index.php?page=license&action=features_save" id="featureProfileForm">
       <?= csrfField() ?>
       <div class="feature-profile-grid">
@@ -252,7 +256,7 @@ include BASE_PATH . '/views/layouts/header.php';
               <?php endforeach; ?>
             </select>
           </div>
-          <div class="mb-3 p-3 rounded-3" style="background:#f9fafb;border:1px solid #e5e7eb">
+          <div class="mb-3 p-3 rounded-3" style="background:var(--bg-main);border:1px solid var(--border)">
             <div style="font-size:12px;color:#6b7280;font-weight:700">Số tiền gợi ý</div>
             <div class="money fw-800 text-success" id="packageAmountPreview" style="font-size:22px"></div>
             <div class="text-muted" id="packageDetailPreview" style="font-size:12px"></div>
@@ -281,7 +285,7 @@ include BASE_PATH . '/views/layouts/header.php';
               <input class="form-control" name="payment_note" placeholder="VD: Khách chuyển khoản gói 6 tháng">
             </div>
             <div class="col-12">
-              <button class="btn btn-success w-100"><i class="bi bi-check2-circle me-1"></i>Ghi nhận thanh toán</button>
+              <button class="btn btn-primary w-100"><i class="bi bi-check2-circle me-1"></i>Ghi nhận thanh toán</button>
             </div>
           </div>
         </form>

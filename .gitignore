@@ -10,3 +10,6 @@
 
 # Backup production nằm ngoài web root; không đưa ZIP dữ liệu lên Git
 /backups/*.zip
+
+# Nhật ký lỗi runtime
+error_log

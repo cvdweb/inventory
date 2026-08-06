@@ -71,12 +71,13 @@ function deliveryBadge(array $inv): string {
   </div>
   <div class="d-flex gap-2">
     <form class="d-flex gap-2" method="GET">
-      <input type="hidden" name="page" value="invoices">
-      <input type="hidden" name="branch" value="<?= $reqBranch ?>">
-      <input type="month" name="ym" class="form-control form-control-sm"
-        value="<?= str_replace('_','-',$yearMonth) ?>"
-        onchange="this.value=this.value.replace('-','_');this.form.submit()">
-    </form>
+  <input type="hidden" name="page" value="invoices">
+  <input type="hidden" name="branch" value="<?= $reqBranch ?>">
+  <input type="hidden" name="ym" id="ymHidden" value="<?= htmlspecialchars($yearMonth) ?>">
+  <input type="month" id="ymPicker" class="form-control form-control-sm"
+    value="<?= str_replace('_','-',$yearMonth) ?>"
+    onchange="document.getElementById('ymHidden').value=this.value.replace('-','_');this.form.submit()">
+</form>
     <a href="index.php?page=invoice&branch=<?= $reqBranch ?>" class="btn btn-primary btn-sm">
       <i class="bi bi-plus-lg me-1"></i>Tạo hóa đơn
     </a>

@@ -73,7 +73,7 @@ featureEnforcePage($page);
 
 // Chặn truy cập chéo chi nhánh trước khi bất kỳ action nào được xử lý.
 $actionBranch = $_GET['branch'] ?? $_POST['branch'] ?? '';
-if ($actionBranch !== '' && !canAccessBranch($actionBranch)) {
+if (is_string($actionBranch) && $actionBranch !== '' && !canAccessBranch($actionBranch)) {
     $_SESSION['flash'] = ['type' => 'danger', 'message' => 'Không có quyền truy cập chi nhánh này'];
     header('Location: index.php');
     exit;
@@ -409,7 +409,13 @@ if ($page==='users') {
     $action=$_GET['action']??'';
     if ($action==='branches_save' && $_SERVER['REQUEST_METHOD']=== 'POST') {
         requireRole(['superadmin','admin']);
-        $r=saveBranchesSettings($_POST);
+        $r=saveBranch($_POST);
+        $_SESSION['flash']=['type'=> $r['success']?'success':'danger','message'=> $r['message']];
+        header('Location: index.php?page=users'); exit;
+    }
+    if ($action==='branches_delete' && $_SERVER['REQUEST_METHOD']=== 'POST') {
+        requireRole(['superadmin','admin']);
+        $r=deleteBranch($_POST['id']??'');
         $_SESSION['flash']=['type'=> $r['success']?'success':'danger','message'=> $r['message']];
         header('Location: index.php?page=users'); exit;
     }

@@ -24,39 +24,126 @@ include BASE_PATH . '/views/layouts/header.php';
 </div>
 
 <?php if (in_array($currentU['role'] ?? '', ['superadmin','admin'], true)): ?>
-<div class="card mb-3">
-  <div class="card-header"><i class="bi bi-shop me-2"></i>Cấu Hình Tên Chi Nhánh</div>
-  <div class="card-body">
-    <form method="POST" action="index.php?page=users&action=branches_save">
-      <?= csrfField() ?>
-      <div class="row g-3">
-        <?php foreach ($branches as $bId => $b): ?>
-        <div class="col-md-6">
-          <div class="p-3 rounded-3" style="background:#f9fafb;border:1px solid #e5e7eb">
-            <div class="fw-800 mb-2">
-              <i class="bi <?= htmlspecialchars($b['icon'] ?? 'bi-shop') ?> me-1 text-<?= htmlspecialchars($b['color'] ?? 'secondary') ?>"></i>
-              <?= htmlspecialchars($bId) ?>
+<div class="card mb-3 shadow-sm border-0">
+  <div class="card-header bg-white d-flex justify-content-between align-items-center">
+    <div class="fw-700" style="font-size:14px"><i class="bi bi-buildings-fill text-primary me-2"></i>Cấu Hình Chi Nhánh</div>
+    <button class="btn btn-sm btn-primary py-1" onclick="openAddBranchModal()"><i class="bi bi-plus-lg me-1"></i>Thêm</button>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" style="font-size:13.5px">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-3 border-0">Chi nhánh</th>
+            <th class="border-0">Mã hiển thị</th>
+            <th class="text-end pe-3 border-0">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach ($branches as $b): ?>
+          <tr>
+            <td class="ps-3 fw-600">
+              <i class="bi <?= htmlspecialchars($b['icon'] ?? 'bi-shop') ?> me-2 text-<?= htmlspecialchars($b['color'] ?? 'primary') ?>"></i>
+              <?= htmlspecialchars($b['name']) ?>
+            </td>
+            <td><span class="badge bg-secondary"><?= htmlspecialchars($b['short']) ?></span></td>
+            <td class="text-end pe-3">
+              <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" title="Sửa" 
+                onclick="openEditBranchModal(<?= htmlspecialchars(json_encode($b, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>)">
+                <i class="bi bi-pencil" style="font-size:12px"></i>
+              </button>
+              <?php if (count($branches) > 1): ?>
+              <form method="POST" action="index.php?page=users&action=branches_delete" class="d-inline"
+                onsubmit="return confirm('CẢNH BÁO: Bạn có chắc chắn muốn xóa chi nhánh \'<?= htmlspecialchars($b['name']) ?>\' không?\nDữ liệu cũ sẽ được lưu trữ lại nhưng chi nhánh sẽ bị ẩn khỏi hệ thống!')">
+                <?= csrfField() ?>
+                <input type="hidden" name="id" value="<?= htmlspecialchars($b['id']) ?>">
+                <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="Xóa">
+                  <i class="bi bi-trash" style="font-size:12px"></i>
+                </button>
+              </form>
+              <?php endif; ?>
+            </td>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Thêm/Sửa Chi Nhánh -->
+<div class="modal fade" id="branchModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h6 class="modal-title fw-700" id="branchModalTitle">Thêm Chi Nhánh</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="index.php?page=users&action=branches_save">
+        <?= csrfField() ?>
+        <input type="hidden" name="id_edit" id="branchIdEdit" value="">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-600" style="font-size:13px">Tên chi nhánh *</label>
+            <input type="text" name="name" id="branchName" class="form-control form-control-sm" required placeholder="Ví dụ: Kho Tổng">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600" style="font-size:13px">Mã viết tắt (Short) *</label>
+            <input type="text" name="short" id="branchShort" class="form-control form-control-sm" required placeholder="Ví dụ: KHO" pattern="[a-zA-Z0-9_]+">
+          </div>
+          <div class="row g-2">
+            <div class="col-6 mb-2">
+              <label class="form-label fw-600" style="font-size:13px">Biểu tượng</label>
+              <select name="icon" id="branchIcon" class="form-select form-select-sm">
+                <option value="bi-shop">Cửa hàng</option>
+                <option value="bi-buildings">Tòa nhà</option>
+                <option value="bi-house-fill">Ngôi nhà</option>
+                <option value="bi-box-seam">Kho hàng</option>
+                <option value="bi-truck">Giao vận</option>
+              </select>
             </div>
-            <div class="row g-2">
-              <div class="col-8">
-                <label class="form-label">Tên chi nhánh</label>
-                <input class="form-control" name="branch_name[<?= htmlspecialchars($bId) ?>]" value="<?= htmlspecialchars($b['name'] ?? '') ?>">
-              </div>
-              <div class="col-4">
-                <label class="form-label">Viết tắt</label>
-                <input class="form-control" name="branch_short[<?= htmlspecialchars($bId) ?>]" value="<?= htmlspecialchars($b['short'] ?? '') ?>">
-              </div>
+            <div class="col-6 mb-2">
+              <label class="form-label fw-600" style="font-size:13px">Màu sắc</label>
+              <select name="color" id="branchColor" class="form-select form-select-sm">
+                <option value="primary">Xanh dương</option>
+                <option value="success">Xanh lá</option>
+                <option value="danger">Đỏ</option>
+                <option value="warning">Vàng</option>
+                <option value="info">Xanh lam</option>
+                <option value="secondary">Xám</option>
+                <option value="dark">Đen</option>
+              </select>
             </div>
           </div>
         </div>
-        <?php endforeach; ?>
-        <div class="col-12">
-          <button class="btn btn-outline-primary"><i class="bi bi-save me-1"></i>Lưu tên chi nhánh</button>
+        <div class="modal-footer border-top-0 pt-0">
+          <button type="button" class="btn btn-light btn-sm px-3" data-bs-dismiss="modal">Hủy</button>
+          <button type="submit" class="btn btn-primary btn-sm px-3"><i class="bi bi-check2 me-1"></i>Lưu lại</button>
         </div>
-      </div>
-    </form>
+      </form>
+    </div>
   </div>
 </div>
+<script>
+function openAddBranchModal() {
+  document.getElementById('branchIdEdit').value = '';
+  document.getElementById('branchName').value = '';
+  document.getElementById('branchShort').value = '';
+  document.getElementById('branchIcon').value = 'bi-shop';
+  document.getElementById('branchColor').value = 'primary';
+  document.getElementById('branchModalTitle').innerHTML = 'Thêm Chi Nhánh';
+  new bootstrap.Modal(document.getElementById('branchModal')).show();
+}
+function openEditBranchModal(b) {
+  document.getElementById('branchIdEdit').value = b.id;
+  document.getElementById('branchName').value = b.name;
+  document.getElementById('branchShort').value = b.short;
+  document.getElementById('branchIcon').value = b.icon || 'bi-shop';
+  document.getElementById('branchColor').value = b.color || 'primary';
+  document.getElementById('branchModalTitle').innerHTML = 'Sửa Chi Nhánh';
+  new bootstrap.Modal(document.getElementById('branchModal')).show();
+}
+</script>
 <?php endif; ?>
 
 <!-- Danh sách tài khoản -->
@@ -258,7 +345,7 @@ include BASE_PATH . '/views/layouts/header.php';
                 </label>
                 <?php endforeach; ?>
               </div>
-              <div class="form-text">Nhân viên chỉ thấy và thao tác tại các chi nhánh được chọn.</div>
+              <div class="form-text" id="addBranchHelp">Nhân viên chỉ thấy và thao tác tại các chi nhánh được chọn.</div>
             </div>
           </div>
         </div>
@@ -662,9 +749,10 @@ function openResetModal(username, name) {
 // Ẩn/hiện chi nhánh dựa theo role
 function onRoleChange(sel, branchId) {
   const br = document.getElementById(branchId);
-  const needBranch = sel.value === 'employee';
+  const role = sel.value;
+  const isSuperAdmin = role === 'superadmin';
   const checks = [...br.querySelectorAll('.branch-check')];
-  if (!needBranch) {
+  if (isSuperAdmin) {
     checks.forEach(input => {
       input.checked = false;
       input.disabled = true;
@@ -674,11 +762,15 @@ function onRoleChange(sel, branchId) {
       input.disabled = false;
     });
   }
-  const help = document.getElementById('editBranchHelp');
-  if (help && branchId === 'editBranch') {
-    help.textContent = needBranch
-      ? 'Tài khoản này chỉ xem và thao tác trong các chi nhánh được chọn.'
-      : 'Vai trò này có quyền toàn hệ thống, không cần chọn chi nhánh.';
+  const help = document.getElementById(branchId + 'Help');
+  if (help) {
+    if (role === 'superadmin') {
+      help.textContent = 'Vai trò này có quyền cao nhất, không giới hạn chi nhánh.';
+    } else if (role === 'admin') {
+      help.textContent = 'Chọn các chi nhánh quản lý (Để trống nếu quản lý tất cả chi nhánh).';
+    } else {
+      help.textContent = 'Tài khoản này chỉ xem và thao tác trong các chi nhánh được chọn.';
+    }
   }
   updateEditSummary();
 }

@@ -21,9 +21,9 @@ function licenseDefaultData(): array
             'monthly_price' => 200000,
             'currency' => 'VND',
             'packages' => [
-                ['months' => 1, 'pay_months' => 1, 'free_months' => 0],
                 ['months' => 6, 'pay_months' => 5, 'free_months' => 1],
                 ['months' => 12, 'pay_months' => 10, 'free_months' => 2],
+                ['months' => 24, 'pay_months' => 20, 'free_months' => 4],
             ],
         ],
         'policy' => [

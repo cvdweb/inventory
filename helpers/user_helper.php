@@ -29,12 +29,10 @@ function getAllUsers(): array
         $newRole = match ($oldRole) {
             'owner' => 'admin',
             'sales', 'warehouse' => 'employee',
-            // Quản lý cũ có giới hạn chi nhánh không được tự động nâng thành chủ cửa hàng.
-            'admin' => empty($branches) ? 'admin' : 'employee',
-            'superadmin', 'employee' => $oldRole,
+            'admin', 'superadmin', 'employee' => $oldRole,
             default => 'employee',
         };
-        $newBranches = in_array($newRole, ['superadmin', 'admin'], true) ? null : $branches;
+        $newBranches = ($newRole === 'superadmin') ? null : $branches;
         $newIcon = iconByRole($newRole);
 
         if ($oldRole !== $newRole || ($user['branch'] ?? null) !== $newBranches || ($user['icon'] ?? '') !== $newIcon) {
@@ -105,7 +103,7 @@ function saveUser(array $userData): array
     if ($role === 'employee' && empty($branch)) {
         return ['success' => false, 'message' => 'Vui lòng chọn ít nhất một chi nhánh cho tài khoản này'];
     }
-    if ($role === 'admin') {
+    if ($role === 'superadmin') {
         $branch = null;
     }
 

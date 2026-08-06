@@ -71,6 +71,49 @@ $dashboardFeatureProfile = featureProfileInfo();
   </div>
 </div>
 
+<!-- Quick Actions -->
+<div class="quick-actions mb-4">
+  <div class="quick-actions-title">
+    <i class="bi bi-lightning-charge-fill"></i> Thao Tác Nhanh
+  </div>
+  <div class="quick-actions-grid">
+    <?php if (in_array($user['role'], ['superadmin','admin','employee'], true)): ?>
+    <a href="index.php?page=invoice&branch=<?= firstAccessibleBranchId() ?>" class="quick-action-card primary">
+      <div class="quick-action-icon"><i class="bi bi-receipt-cutoff"></i></div>
+      <div class="quick-action-text">
+        <span class="quick-action-label">Lập Hóa Đơn</span>
+        <span class="quick-action-desc">Bán hàng mới</span>
+      </div>
+    </a>
+    <?php endif; ?>
+    <?php if (in_array($user['role'], ['superadmin','admin','employee'], true)): ?>
+    <a href="index.php?page=imports&branch=<?= firstAccessibleBranchId() ?>" class="quick-action-card">
+      <div class="quick-action-icon"><i class="bi bi-download"></i></div>
+      <div class="quick-action-text">
+        <span class="quick-action-label">Nhập Hàng</span>
+        <span class="quick-action-desc">Thêm kho</span>
+      </div>
+    </a>
+    <?php endif; ?>
+    <?php if (in_array($user['role'], ['superadmin','admin','employee'], true)): ?>
+    <a href="index.php?page=invoices&branch=<?= firstAccessibleBranchId() ?>" class="quick-action-card">
+      <div class="quick-action-icon"><i class="bi bi-journal-text"></i></div>
+      <div class="quick-action-text">
+        <span class="quick-action-label">DS Hóa Đơn</span>
+        <span class="quick-action-desc">Xem lịch sử</span>
+      </div>
+    </a>
+    <?php endif; ?>
+    <a href="index.php?page=search_invoices" class="quick-action-card">
+      <div class="quick-action-icon"><i class="bi bi-search"></i></div>
+      <div class="quick-action-text">
+        <span class="quick-action-label">Tìm HĐ</span>
+        <span class="quick-action-desc">Tra cứu nhanh</span>
+      </div>
+    </a>
+  </div>
+</div>
+
 <!-- Tổng hợp -->
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3">

@@ -58,11 +58,21 @@ function initInvoiceBuilder(branch) {
 }
 
 function addInvoiceItem(product) {
+  const stock = parseFloat(product.stock) || 0;
   const existing = legacyInvoiceItems.find(i => i.code === product.code);
+  
   if (existing) {
+    if (existing.qty + 1 > stock) {
+      if (typeof showToast === 'function') showToast(`Tồn kho chỉ còn ${formatNum(stock)} ${product.unit}`, 'warning');
+      return;
+    }
     existing.qty += 1;
     existing.line_total = existing.qty * existing.price_out;
   } else {
+    if (1 > stock) {
+      if (typeof showToast === 'function') showToast(`Sản phẩm đã hết hàng trong kho.`, 'warning');
+      return;
+    }
     legacyInvoiceItems.push({
       code:       product.code,
       name:       product.name,
@@ -70,7 +80,7 @@ function addInvoiceItem(product) {
       qty:        1,
       price_out:  parseFloat(product.price_out) || 0,
       line_total: parseFloat(product.price_out) || 0,
-      stock:      parseFloat(product.stock) || 0,
+      stock:      stock,
     });
   }
   renderInvoiceItems();
@@ -87,7 +97,8 @@ function updateQty(code, qty) {
   if (!item) return;
   const n = parseFloat(qty) || 0;
   if (n > item.stock) {
-    showToast(`Tồn kho chỉ còn ${formatNum(item.stock)} ${item.unit}`, 'warning');
+    if (typeof showToast === 'function') showToast(`Tồn kho chỉ còn ${formatNum(item.stock)} ${item.unit}`, 'warning');
+    renderInvoiceItems(); // Revert the input value
     return;
   }
   item.qty = n;

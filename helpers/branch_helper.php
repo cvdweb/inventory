@@ -9,10 +9,10 @@ function getDefaultBranches(): array
 
 function getBranches(): array
 {
-    $defaults = array_values(getDefaultBranches());
     $saved = array_values(readJson(BRANCHES_FILE));
 
     if (!$saved) {
+        $defaults = array_values(getDefaultBranches());
         $initial = [];
         foreach ($defaults as $branch) {
             $id = $branch['id'];
@@ -23,26 +23,9 @@ function getBranches(): array
     }
 
     $branches = [];
-    foreach ($defaults as $idx => $default) {
-        $baseId = $default['id'];
-        $custom = null;
-
-        foreach ($saved as $row) {
-            if (($row['base_id'] ?? $row['id'] ?? '') === $baseId) {
-                $custom = $row;
-                break;
-            }
-        }
-        if (!$custom && isset($saved[$idx]) && is_array($saved[$idx])) {
-            $custom = $saved[$idx];
-        }
-
-        $branch = array_merge($default, is_array($custom) ? $custom : []);
-        $branch['base_id'] = $baseId;
-        $branch['id'] = $branch['id'] ?? $baseId;
+    foreach ($saved as $branch) {
         $branches[$branch['id']] = $branch;
     }
-
     return $branches;
 }
 
@@ -65,56 +48,91 @@ function firstBranchId(): string
     return array_key_first($branches) ?? '';
 }
 
-function saveBranchesSettings(array $post): array
+function saveBranch(array $post): array
 {
-    $branches = array_values(getBranches());
-    $names = $post['branch_name'] ?? [];
-    $shorts = $post['branch_short'] ?? [];
-    $savedBranches = [];
-    $renamed = [];
+    $branches = getBranches();
+    $idEdit = $post['id_edit'] ?? '';
+    $name = trim($post['name'] ?? '');
+    $short = trim($post['short'] ?? '');
+    $icon = trim($post['icon'] ?? 'bi-shop');
+    $color = trim($post['color'] ?? 'primary');
 
-    foreach ($branches as $idx => $branch) {
-        $oldId = $branch['id'];
-        $name = trim($names[$oldId] ?? $branch['name'] ?? '');
-        $short = trim($shorts[$oldId] ?? $branch['short'] ?? '');
+    if ($name === '') return ['success' => false, 'message' => 'Tên chi nhánh không được để trống'];
+    if ($short === '') return ['success' => false, 'message' => 'Tên viết tắt không được để trống'];
 
-        if ($name === '') {
-            return ['success' => false, 'message' => 'Tên chi nhánh không được để trống'];
+    $short = mb_strtoupper($short, 'UTF-8');
+    
+    if ($idEdit === '') {
+        $position = count($branches) + 1;
+        $newId = buildBranchId($position, $short);
+        while (isset($branches[$newId])) {
+            $position++;
+            $newId = buildBranchId($position, $short);
         }
-        if ($short === '') {
-            return ['success' => false, 'message' => 'Tên viết tắt chi nhánh không được để trống'];
+        $branch = [
+            'id' => $newId,
+            'base_id' => $newId,
+            'name' => $name,
+            'short' => $short,
+            'icon' => $icon,
+            'color' => $color
+        ];
+        $branches[$newId] = $branch;
+        
+        $dir = DATA_PATH . "/{$newId}";
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        
+        $message = 'Đã thêm chi nhánh mới';
+    } else {
+        if (!isset($branches[$idEdit])) return ['success' => false, 'message' => 'Không tìm thấy chi nhánh'];
+        $branch = $branches[$idEdit];
+        
+        preg_match('/branch_(\d+)_/', $idEdit, $matches);
+        $position = isset($matches[1]) ? (int)$matches[1] : count($branches);
+        $newId = buildBranchId($position, $short);
+        
+        if (isset($branches[$newId]) && $newId !== $idEdit) {
+             return ['success' => false, 'message' => "Mã chi nhánh '{$newId}' bị trùng. Vui lòng đổi tên viết tắt."];
         }
-
-        $short = mb_strtoupper($short, 'UTF-8');
-        $newId = buildBranchId($idx + 1, $short);
-        if (isset($savedBranches[$newId]) && $newId !== $oldId) {
-            return ['success' => false, 'message' => "Mã chi nhánh '{$newId}' bị trùng. Vui lòng đổi tên viết tắt."];
+        
+        if ($newId !== $idEdit) {
+            $migrate = migrateBranchId($idEdit, $newId);
+            if (!$migrate['success']) return $migrate;
+            unset($branches[$idEdit]);
         }
-
-        if ($newId !== $oldId) {
-            $migrate = migrateBranchId($oldId, $newId);
-            if (!$migrate['success']) {
-                return $migrate;
-            }
-            $renamed[] = "{$oldId} -> {$newId}";
-        }
-
+        
         $branch['id'] = $newId;
-        $branch['base_id'] = $branch['base_id'] ?? $oldId;
         $branch['name'] = $name;
         $branch['short'] = $short;
-        $savedBranches[$newId] = $branch;
+        $branch['icon'] = $icon;
+        $branch['color'] = $color;
+        $branches[$newId] = $branch;
+        $message = 'Đã cập nhật chi nhánh';
     }
 
-    $ok = writeJson(BRANCHES_FILE, array_values($savedBranches));
-    $message = 'Đã cập nhật cấu hình chi nhánh';
-    if ($renamed) {
-        $message .= '. Đã đổi mã: ' . implode(', ', $renamed);
-    }
-
+    $ok = writeJson(BRANCHES_FILE, array_values($branches));
     return $ok
         ? ['success' => true, 'message' => $message]
         : ['success' => false, 'message' => 'Không lưu được cấu hình chi nhánh'];
+}
+
+function deleteBranch(string $id): array
+{
+    $branches = getBranches();
+    if (!isset($branches[$id])) return ['success' => false, 'message' => 'Không tìm thấy chi nhánh'];
+    if (count($branches) <= 1) return ['success' => false, 'message' => 'Phải giữ lại ít nhất 1 chi nhánh'];
+    
+    unset($branches[$id]);
+    $ok = writeJson(BRANCHES_FILE, array_values($branches));
+    
+    $dir = DATA_PATH . "/{$id}";
+    if (is_dir($dir)) {
+        @rename($dir, $dir . '_deleted_' . time());
+    }
+    
+    return $ok
+        ? ['success' => true, 'message' => 'Đã xóa chi nhánh']
+        : ['success' => false, 'message' => 'Không lưu được dữ liệu'];
 }
 
 function buildBranchId(int $position, string $short): string

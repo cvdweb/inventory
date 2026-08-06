@@ -14,7 +14,7 @@ include BASE_PATH . '/views/layouts/header.php';
   display: flex;
   flex-direction: column;
   gap: 12px;
-  height: calc(100vh - 130px); /* trừ topbar */
+  height: calc(100vh - 112px); /* trừ topbar + padding */
 }
 
 /* Accordion thông tin khách + giao hàng */
@@ -25,7 +25,7 @@ include BASE_PATH . '/views/layouts/header.php';
 /* Vùng làm việc chính: tìm SP trái + DS hóa đơn phải */
 .pos-main {
   display: grid;
-  grid-template-columns: 360px 1fr;
+  grid-template-columns: clamp(400px, 34vw, 560px) 1fr;
   gap: 12px;
   flex: 1;
   min-height: 0; /* quan trọng để overflow hoạt động */
@@ -43,9 +43,26 @@ include BASE_PATH . '/views/layouts/header.php';
 }
 .pos-left-search {
   flex-shrink: 0;
-  padding: 12px;
+  padding: 14px;
   border-bottom: 1px solid var(--border);
   background: #fff;
+}
+.pos-left-search .form-control {
+  height: 46px;
+  font-size: 15px;
+  border-radius: 10px;
+}
+.pos-left-title {
+  font-weight: 800;
+  font-size: 14px;
+  margin-bottom: 10px;
+  color: #111827;
+}
+.pos-left-title-count {
+  font-size: 11px;
+  font-weight: 500;
+  color: #9ca3af;
+  float: right;
 }
 .pos-left-cats {
   flex: 1;
@@ -84,34 +101,112 @@ include BASE_PATH . '/views/layouts/header.php';
   background: var(--bg-main);
 }
 
-/* Item row trong DS hóa đơn */
+/* Item trong DS hóa đơn — thẻ 2 dòng: SP trên, điều khiển dưới */
 .inv-row {
   display: grid;
-  grid-template-columns: 1fr 136px 130px 120px 36px;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "product remove"
+    "controls controls";
+  gap: 4px 12px;
   align-items: center;
-  padding: 9px 14px;
+  padding: 12px 14px;
   border-bottom: 1px solid #f3f4f6;
   transition: background .1s;
 }
 .inv-row:hover { background: #fafafa; }
-.mobile-label { display: none; }
-.qty-control {
-  display: grid;
-  grid-template-columns: 34px minmax(54px, 1fr) 34px;
-  gap: 4px;
-  align-items: center;
+.inv-product { grid-area: product; min-width: 0; }
+.inv-remove { grid-area: remove; }
+.inv-controls { grid-area: controls; }
+
+.inv-name {
+  font-weight: 700;
+  font-size: 14.5px;
+  color: #111827;
+  line-height: 1.3;
+  word-break: break-word;
 }
-.qty-step {
-  min-width: 34px;
-  height: 32px;
+.inv-color {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: #f3e8ff;
+  color: #7c3aed;
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: 1px;
+}
+.inv-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 14px;
+  align-items: center;
+  margin-top: 4px;
+  font-size: 11px;
+}
+.inv-code { font-family: 'JetBrains Mono', monospace; color: #9ca3af; }
+.inv-stock { font-weight: 700; color: #10b981; }
+.inv-stock.low { color: #ef4444; }
+
+.inv-controls {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  gap: 10px 14px;
+  margin-top: 9px;
+}
+.inv-qty { flex: 0 0 auto; }
+.inv-price { flex: 1 1 200px; min-width: 0; max-width: 360px; }
+.inv-qty, .inv-price {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.inv-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 10.5px;
+  color: #6b7280;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+
+.inv-remove {
+  width: 36px;
+  height: 36px;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 9px;
+  background: #fff;
+  color: #9ca3af;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.inv-remove:hover { background: #fef2f2; border-color: #fecaca; color: #ef4444; }
+.inv-remove:focus-visible { box-shadow: 0 0 0 2px rgba(239,68,68,.25); }
+
+.qty-control {
+  display: grid;
+  grid-template-columns: 36px minmax(56px, 1fr) 36px;
+  gap: 4px;
+  align-items: center;
+}
+.qty-step {
+  min-width: 36px;
+  height: 38px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
 }
 .inv-row .form-control {
-  min-height: 34px;
+  min-height: 38px;
 }
 
 /* Flash khi thêm sản phẩm mới */
@@ -123,18 +218,36 @@ include BASE_PATH . '/views/layouts/header.php';
 
 /* Product item trong danh sách nhóm */
 .cat-item {
-  padding: 12px 12px;
+  padding: 14px 14px;
   cursor: pointer;
   border: 1px solid #edf0f3;
-  border-radius: 8px;
-  margin-bottom: 6px;
-  transition: background .1s;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  transition: background .1s, border-color .1s;
   background: #fff;
 }
 .cat-item:hover { background: #fffbeb; border-color: #fcd34d; }
 .cat-item:last-child { margin-bottom: 0; }
 .cat-toggle {
-  min-height: 42px;
+  min-height: 46px;
+}
+.cat-toggle:hover { border-color: #fcd34d !important; }
+.cat-toggle:focus-visible { box-shadow: 0 0 0 2px rgba(245,158,11,.25); }
+.cat-toggle-icon { color: #8b5cf6; }
+.cat-item-name {
+  font-weight: 700;
+  font-size: 15px;
+  color: #111827;
+  line-height: 1.35;
+}
+.cat-item-stock {
+  font-size: 12.5px;
+  font-weight: 800;
+}
+.cat-item-price {
+  font-size: 13px;
+  font-weight: 800;
+  color: #f59e0b;
 }
 
 /* Accordion */
@@ -229,9 +342,9 @@ include BASE_PATH . '/views/layouts/header.php';
 .invoice-info-actions { display:flex; gap:6px; }
 
 /* Responsive */
-@media (max-width: 900px) {
+@media (max-width: 1200px) {
   .pos-main { grid-template-columns: 1fr; }
-  .pos-left  { max-height: 40vh; }
+  .pos-left  { max-height: 44vh; }
   .pos-wrap  { height: auto; }
 }
 
@@ -325,10 +438,9 @@ include BASE_PATH . '/views/layouts/header.php';
     padding: 8px;
   }
   .pos-left-cats button {
-    min-height: 42px;
+    min-height: 46px;
   }
   .cat-item {
-    padding: 12px 10px;
     margin-bottom: 6px;
     background: #fff;
     border: 1px solid #edf0f3;
@@ -351,47 +463,36 @@ include BASE_PATH . '/views/layouts/header.php';
     overflow: visible;
   }
   .inv-row {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px;
-    padding: 12px;
+    padding: 13px 14px;
     margin-bottom: 8px;
     background: #fff;
     border: 1px solid #e5e7eb;
-    border-radius: 10px;
+    border-radius: 12px;
     box-shadow: 0 1px 2px rgba(17,24,39,.04);
   }
   .inv-product {
     grid-column: 1 / -1;
   }
+  .inv-name { font-size: 15px; }
   .inv-qty,
   .inv-price {
     min-width: 0;
   }
-  .inv-total {
-    grid-column: 1 / 2;
-    align-self: center;
-    text-align: left !important;
-    font-size: 16px !important;
-  }
   .inv-remove {
-    grid-column: 2 / 3;
-    align-self: center;
+    width: 40px;
+    height: 40px;
   }
-  .inv-remove .btn {
-    width: 42px;
-    height: 42px;
-    padding: 0;
+  .inv-controls {
+    flex-wrap: nowrap;
+    gap: 10px;
+    margin-top: 10px;
   }
-  .mobile-label {
-    display: block;
-    margin-bottom: 4px;
-    font-size: 11px;
-    color: #6b7280;
-    font-weight: 800;
-    text-transform: uppercase;
-  }
+  .inv-qty { flex: 1 1 170px; }
+  .inv-price { flex: 1 1 140px; }
   .qty-control {
-    grid-template-columns: 42px minmax(68px, 1fr) 42px;
+    grid-template-columns: 42px minmax(0, 1fr) 42px;
   }
   .qty-step {
     height: 44px;
@@ -494,8 +595,13 @@ include BASE_PATH . '/views/layouts/header.php';
     box-shadow: 0 5px 14px rgba(17,24,39,.08);
   }
   .pos-left-cats { max-height: none; overflow: visible; padding: 0; }
-  .cat-toggle { min-height: 48px; border-radius: 8px; }
-  .cat-item { min-height: 62px; padding: 13px 12px; }
+  .pos-left-cats .cat-toggle { min-height: 52px; border-radius: 10px; font-size: 14.5px; }
+  .cat-item { min-height: 72px; padding: 15px 14px; }
+  .cat-item-name { font-size: 15.5px; }
+  .cat-item-stock { font-size: 13px; }
+  .cat-item-price { font-size: 13.5px; }
+  .pos-left-cats { padding: 8px 0 0; }
+  .pos-left-cats .mb-2 { margin-bottom: 10px; }
   .pos-right {
     display: none;
     position: fixed;
@@ -585,9 +691,7 @@ include BASE_PATH . '/views/layouts/header.php';
   .mobile-invoice-info-slot #accBody .row { margin: 0; }
   .mobile-invoice-info-slot #accBody .row > [class*="col-"] { padding-right: 0; padding-left: 0; }
   .pos-right-items { flex: 1; padding: 10px; overflow-y: auto; }
-  .inv-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .inv-qty { grid-column: 1 / 2; min-width: 0; }
-  .inv-price { grid-column: 2 / 3; width: auto; min-width: 0; }
+  .inv-row { grid-template-columns: minmax(0, 1fr) auto; }
   .inv-qty .qty-control { grid-template-columns: 42px minmax(0, 1fr) 42px; }
   .pos-right-footer {
     display: block;
@@ -767,16 +871,16 @@ include BASE_PATH . '/views/layouts/header.php';
 
       <!-- Ô tìm kiếm — sticky top -->
       <div class="pos-left-search">
-        <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:#374151">
+        <div class="pos-left-title">
           <i class="bi bi-search me-2 text-warning"></i>Tìm Sản Phẩm
-          <span style="font-size:11px;font-weight:400;color:#9ca3af;float:right"><?= count($allProducts) ?> SP</span>
+          <span class="pos-left-title-count"><?= count($allProducts) ?> SP</span>
         </div>
         <div style="position:relative">
-          <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9ca3af;pointer-events:none;font-size:14px">
+          <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#9ca3af;pointer-events:none;font-size:15px">
             <i class="bi bi-search"></i>
           </span>
           <input type="text" id="productSearch" class="form-control form-control-sm"
-            style="padding-left:32px;font-size:13px"
+            style="padding-left:36px;font-size:15px"
             placeholder="Nhập mã hoặc tên..."
             autocomplete="off"
             oninput="doSearch(this.value)"
@@ -784,9 +888,9 @@ include BASE_PATH . '/views/layouts/header.php';
           <!-- Dropdown -->
           <div id="productDropdown" style="
             display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;
-            background:#fff;border:1.5px solid #e5e7eb;border-radius:8px;
+            background:#fff;border:1.5px solid #e5e7eb;border-radius:10px;
             box-shadow:0 8px 24px rgba(0,0,0,.14);z-index:9999;
-            max-height:260px;overflow-y:auto"></div>
+            max-height:min(60vh,420px);overflow-y:auto"></div>
         </div>
       </div>
 
@@ -800,9 +904,9 @@ include BASE_PATH . '/views/layouts/header.php';
         <div class="mb-2">
           <button type="button"
             class="cat-toggle btn btn-sm w-100 text-start d-flex justify-content-between align-items-center"
-            style="background:#f9fafb;border:1px solid #e5e7eb;font-weight:800;font-size:13.5px;padding:9px 12px"
+            style="background:#f9fafb;border:1px solid #e5e7eb;font-weight:800;font-size:14px;padding:11px 14px"
             onclick="toggleCat('cat_<?= $catKey ?>', this)">
-            <span><i class="bi <?= htmlspecialchars($catInfo['icon'] ?? 'bi-box') ?> me-2" style="color:#8b5cf6"></i><?= htmlspecialchars($catInfo['name']) ?></span>
+            <span><i class="bi <?= htmlspecialchars($catInfo['icon'] ?? 'bi-box') ?> me-2 cat-toggle-icon"></i><?= htmlspecialchars($catInfo['name']) ?></span>
             <span class="d-flex align-items-center gap-1">
               <span class="badge bg-secondary" style="font-size:11px"><?= count($catProds) ?></span>
               <i class="bi bi-chevron-down" style="font-size:11px;color:#9ca3af;transition:transform .2s" id="chev_<?= $catKey ?>"></i>
@@ -822,7 +926,7 @@ include BASE_PATH . '/views/layouts/header.php';
               $hasColors = !empty($p['special_colors']);
             ?>
             <div class="cat-item" onclick='addItem(<?= $pJson ?>)'>
-              <div style="font-weight:700;font-size:14px;color:#111827;line-height:1.35">
+              <div class="cat-item-name">
                 <?= htmlspecialchars($p['name']) ?>
                 <?php if ($hasColors): ?>
                 <span style="background:#f3e8ff;color:#7c3aed;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:4px">
@@ -830,13 +934,13 @@ include BASE_PATH . '/views/layouts/header.php';
                 </span>
                 <?php endif; ?>
               </div>
-              <div class="d-flex justify-content-between mt-1">
+              <div class="d-flex justify-content-between align-items-center mt-1">
                 <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9ca3af"><?= htmlspecialchars($p['code']) ?></span>
-                <span style="font-size:11.5px;font-weight:800;color:<?= $low ? '#ef4444' : '#10b981' ?>">
+                <span class="cat-item-stock" style="color:<?= $low ? '#ef4444' : '#10b981' ?>">
                   <?= number_format($p['stock'] ?? 0, 2, ',', '.') ?> <?= htmlspecialchars($p['unit']) ?>
                   <?= $low ? 'âš ' : '' ?>
                 </span>
-                <span style="font-size:12px;font-weight:800;color:#f59e0b"><?= number_format($p['price_out'] ?? 0, 0, ',', '.') ?> &#8363;</span>
+                <span class="cat-item-price"><?= number_format($p['price_out'] ?? 0, 0, ',', '.') ?> &#8363;</span>
               </div>
             </div>
             <?php endforeach; ?>
@@ -859,7 +963,7 @@ include BASE_PATH . '/views/layouts/header.php';
         <span id="itemCount" class="badge bg-secondary" style="font-weight:600;font-size:11px">0</span>
         <div class="ms-auto d-flex gap-2">
           <button type="button" class="btn btn-sm btn-outline-danger"
-            onclick="if(invoiceItems.length&&confirm('Xóa toàn bộ hóa đơn?')){invoiceItems=[];renderItems()}">
+            onclick="if(invoiceItems.length) new bootstrap.Modal(document.getElementById('confirmClearModal')).show()">
             <i class="bi bi-trash"></i>
           </button>
         </div>
@@ -876,15 +980,6 @@ include BASE_PATH . '/views/layouts/header.php';
         <i class="bi bi-chevron-down mobile-info-chevron"></i>
       </button>
       <div id="mobileInvoiceInfoSlot" class="mobile-invoice-info-slot"></div>
-
-      <div class="pos-table-head" style="display:grid;grid-template-columns:1fr 136px 130px 120px 36px;gap:8px;
-        padding:6px 14px;background:#f9fafb;border-bottom:1px solid #e5e7eb;flex-shrink:0">
-        <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase">Sản phẩm</div>
-        <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase">Số lượng</div>
-        <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase">Đơn giá (₫)</div>
-        <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase">Thành tiền</div>
-        <div></div>
-      </div>
 
       <!-- Danh sách items — scroll độc lập -->
       <div class="pos-right-items" id="invoiceItems">
@@ -912,6 +1007,9 @@ include BASE_PATH . '/views/layouts/header.php';
               <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Tổng cộng</div>
               <div id="invoiceTotal" style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:#f59e0b">0 &#8363;</div>
             </div>
+            <button type="button" class="btn btn-outline-secondary btn-lg px-3" onclick="printQuote()" style="white-space:nowrap">
+              <i class="bi bi-printer me-1"></i>Báo giá
+            </button>
             <button type="submit" class="submit-invoice btn btn-primary btn-lg px-4" style="white-space:nowrap">
               <i class="bi bi-check2-circle me-2"></i>Xuất Hóa Đơn
             </button>
@@ -1033,19 +1131,19 @@ function doSearch(val) {
     const low = p.stock < (p.min_stock||5);
     const hasColor = p.special_colors && p.special_colors.length > 0;
     return `<div onclick='addItem(${JSON.stringify(p)})'
-      style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f3f4f6;transition:background .1s"
+      style="padding:13px 16px;cursor:pointer;border-bottom:1px solid #f3f4f6;transition:background .1s"
       onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background=''">
-      <div style="font-weight:600;font-size:13.5px;color:#111">
+      <div style="font-weight:700;font-size:14.5px;color:#111">
         ${esc(p.name)}
         ${hasColor ? `<span style="background:#f3e8ff;color:#7c3aed;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:6px">
           <i class="bi bi-palette"></i> ${p.special_colors.length} màu ĐB</span>` : ''}
       </div>
-      <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap;align-items:center">
-        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9ca3af">${esc(p.code)}</span>
-        <span style="font-size:11px;font-weight:700;color:${low?'#ef4444':'#10b981'}">
+      <div style="display:flex;gap:10px;margin-top:5px;flex-wrap:wrap;align-items:center">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#9ca3af">${esc(p.code)}</span>
+        <span style="font-size:12px;font-weight:700;color:${low?'#ef4444':'#10b981'}">
           Tồn: ${fmt(p.stock)} ${esc(p.unit)}${low?' ⚠️':''}
         </span>
-        <span style="font-size:12px;font-weight:800;color:#f59e0b;margin-left:auto">${fmtM(p.price_out)}</span>
+        <span style="font-size:13px;font-weight:800;color:#f59e0b;margin-left:auto">${fmtM(p.price_out)}</span>
       </div>
     </div>`;
   }).join('');
@@ -1076,12 +1174,21 @@ function _doAddItem(p, colorName, surcharge) {
   const basePrice  = parseFloat(p.price_out) || 0;
   const finalPrice = basePrice + (parseFloat(surcharge) || 0);
   const displayName = colorName ? `${p.name} — ${colorName}` : p.name;
+  const stock = parseFloat(p.stock) || 0;
 
   const ex = invoiceItems.find(i => i.code === key);
   if (ex) {
+    if (ex.qty + 1 > stock) {
+      if (typeof showToast === 'function') showToast(`Tồn kho chỉ còn ${fmt(stock)} ${p.unit}`, 'warning');
+      return;
+    }
     ex.qty += 1;
     ex.line_total = ex.qty * ex.price_out;
   } else {
+    if (1 > stock) {
+      if (typeof showToast === 'function') showToast(`Sản phẩm đã hết hàng trong kho.`, 'warning');
+      return;
+    }
     invoiceItems.push({
       code:         key,
       product_code: p.code,          // mã SP gốc để trừ tồn kho
@@ -1090,7 +1197,7 @@ function _doAddItem(p, colorName, surcharge) {
       qty:          1,
       price_out:    finalPrice,
       line_total:   finalPrice,
-      stock:        parseFloat(p.stock) || 0,
+      stock:        stock,
       color_name:   colorName || '',
       surcharge:    parseFloat(surcharge) || 0,
     });
@@ -1234,9 +1341,6 @@ function setQty(code, val) {
     if (inp) inp.value = item.qty; return;
   }
   item.qty = n; item.line_total = item.qty * item.price_out;
-  // Cập nhật thành tiền không re-render toàn bộ
-  const lt = document.getElementById('lt_'+code);
-  if (lt) lt.textContent = fmtM(item.line_total);
   updateTotals(); syncJson();
 }
 
@@ -1259,8 +1363,6 @@ function setPrice(code, val) {
   if (!item) return;
   item.price_out  = parseFloat(val)||0;
   item.line_total = item.qty * item.price_out;
-  const lt = document.getElementById('lt_'+code);
-  if (lt) lt.textContent = fmtM(item.line_total);
   updateTotals(); syncJson();
 }
 
@@ -1283,54 +1385,47 @@ function renderItems() {
   container.innerHTML = invoiceItems.map(item => `
     <div class="inv-row" id="row_${esc(item.code)}">
       <div class="inv-product">
-        <div style="font-weight:600;font-size:13.5px;color:#111;line-height:1.3">
+        <div class="inv-name">
           ${item.color_name
             ? `<span>${esc(item.name.split(' — ')[0])}</span>
-               <span style="display:inline-block;margin-left:6px;background:#f3e8ff;color:#7c3aed;border-radius:4px;padding:1px 7px;font-size:11px;font-weight:700">
-                 <i class="bi bi-palette" style="font-size:10px"></i> ${esc(item.color_name)}
-               </span>`
+               <span class="inv-color"><i class="bi bi-palette" style="font-size:10px"></i> ${esc(item.color_name)}</span>`
             : esc(item.name)
           }
         </div>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#9ca3af">
-          ${esc(item.product_code || item.code)}
-          <span style="margin-left:6px;color:${item.stock<(item.min_stock||5)?'#ef4444':'#10b981'};font-weight:700">
-            Tồn: ${fmt(item.stock)} ${esc(item.unit)}
+        <div class="inv-meta">
+          <span class="inv-code">${esc(item.product_code || item.code)}</span>
+          <span class="inv-stock ${item.stock < (item.min_stock || 5) ? 'low' : ''}">
+            <i class="bi bi-box-seam" style="font-size:10px"></i> Tồn: ${fmt(item.stock)} ${esc(item.unit)}
           </span>
         </div>
       </div>
-      <div class="inv-qty">
-        <span class="mobile-label">Số lượng</span>
-        <div class="qty-control">
-          <button type="button" class="qty-step btn btn-outline-secondary" onclick="stepQty('${esc(item.code)}',-1)" aria-label="Giảm số lượng">
-            <i class="bi bi-dash"></i>
-          </button>
-          <input type="number" data-qty="${esc(item.code)}"
-            class="form-control form-control-sm" style="text-align:center;font-weight:800"
-            min="0.01" step="0.01" value="${item.qty}"
-            onfocus="this.select()"
-            onchange="setQty('${esc(item.code)}',this.value)">
-          <button type="button" class="qty-step btn btn-outline-secondary" onclick="stepQty('${esc(item.code)}',1)" aria-label="Tăng số lượng">
-            <i class="bi bi-plus"></i>
-          </button>
+      <button type="button" class="inv-remove" onclick="removeItem('${esc(item.code)}')" aria-label="Xóa sản phẩm">
+        <i class="bi bi-x-lg"></i>
+      </button>
+      <div class="inv-controls">
+        <div class="inv-qty">
+          <span class="inv-label">Số lượng</span>
+          <div class="qty-control">
+            <button type="button" class="qty-step btn btn-outline-secondary" onclick="stepQty('${esc(item.code)}',-1)" aria-label="Giảm số lượng">
+              <i class="bi bi-dash"></i>
+            </button>
+            <input type="number" data-qty="${esc(item.code)}"
+              class="form-control form-control-sm" style="text-align:center;font-weight:800"
+              min="0.01" step="0.01" value="${item.qty}"
+              onfocus="this.select()"
+              onchange="setQty('${esc(item.code)}',this.value)">
+            <button type="button" class="qty-step btn btn-outline-secondary" onclick="stepQty('${esc(item.code)}',1)" aria-label="Tăng số lượng">
+              <i class="bi bi-plus"></i>
+            </button>
+          </div>
         </div>
-      </div>
-      <div class="inv-price">
-        <span class="mobile-label">Đơn giá</span>
-        <input type="number" class="form-control form-control-sm" style="text-align:right"
-          min="0" step="1" value="${item.price_out}"
-          onfocus="this.select()"
-          onchange="setPrice('${esc(item.code)}',this.value)">
-      </div>
-      <div class="inv-total" id="lt_${esc(item.code)}"
-        style="font-family:'JetBrains Mono',monospace;font-weight:800;font-size:14px;color:#f59e0b;text-align:right">
-        ${fmtM(item.line_total)}
-      </div>
-      <div class="inv-remove" style="text-align:center">
-        <button type="button" class="btn btn-sm btn-outline-danger"
-          onclick="removeItem('${esc(item.code)}')">
-          <i class="bi bi-x"></i>
-        </button>
+        <div class="inv-price">
+          <span class="inv-label">Đơn giá</span>
+          <input type="number" class="form-control form-control-sm" style="text-align:right"
+            min="0" step="1" value="${item.price_out}"
+            onfocus="this.select()"
+            onchange="setPrice('${esc(item.code)}',this.value)">
+        </div>
       </div>
     </div>`).join('');
 
@@ -1460,6 +1555,168 @@ syncMobileInvoiceLayout();
 renderItems();
 updateSummary();
 updateMobileCart();
+
+function printQuote() {
+  if (!invoiceItems.length) {
+    if (typeof showToast === 'function') showToast('Vui lòng thêm sản phẩm vào hóa đơn để in báo giá.', 'warning');
+    return;
+  }
+
+  const BIZ = <?= json_encode([
+    'name'        => BUSINESS['name'] ?? '',
+    'address'     => BUSINESS['address'] ?? '',
+    'phone'       => BUSINESS['phone'] ?? '',
+    'tax_code'    => BUSINESS['tax_code'] ?? '',
+  ], JSON_UNESCAPED_UNICODE) ?>;
+
+  const payLabel = {cash:'Tiền mặt',transfer:'Chuyển khoản',cod:'COD',credit:'Công nợ'};
+  
+  const customer = document.getElementById('inpCustomer')?.value || 'Khách lẻ';
+  const phone = document.querySelector('input[name="phone"]')?.value || '';
+  const address = document.querySelector('input[name="address"]')?.value || '';
+  const payment = document.getElementById('inpPayment')?.value || 'cash';
+  const note = document.querySelector('input[name="note"]')?.value || '';
+  
+  const shipping_fee = parseFloat(document.getElementById('inpShippingFee')?.value || 0) || 0;
+  const subtotal = invoiceItems.reduce((s,i) => s + i.line_total, 0);
+  const total = subtotal + shipping_fee;
+
+  const rows = invoiceItems.map((item, idx) => `
+    <tr>
+      <td style="text-align:center">${idx+1}</td>
+      <td>
+        <div style="font-weight:bold">${esc(item.name)}</div>
+        <div class="product-code">${esc(item.product_code || item.code)}</div>
+      </td>
+      <td style="text-align:center;font-weight:bold">${fmt(item.qty)}</td>
+      <td style="text-align:center">${esc(item.unit)}</td>
+      <td style="text-align:right">${fmtM(item.price_out)}</td>
+      <td style="text-align:right;font-weight:bold">${fmtM(item.line_total)}</td>
+    </tr>`).join('');
+
+  const win = window.open('', '_blank', 'width=900,height=750');
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())} ${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()}`;
+
+  win.document.write(`<!DOCTYPE html>
+<html lang="vi"><head>
+<meta charset="UTF-8">
+<title>Bảng Báo Giá</title>
+<style>
+  @page { size: A4; margin: 12mm 16mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Times New Roman', serif; font-size: 11.5pt; color: #000; line-height:1.18; }
+  .biz-header { text-align: center; padding-bottom: 2mm; margin-bottom: 2mm; }
+  .biz-name    { font-size: 15pt; font-weight: bold; }
+  .biz-contact { font-size: 10.5pt; color: #333; margin-top: .7mm; }
+  .inv-title { text-align: center; font-size: 15pt; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; margin: 2.5mm 0 2.5mm; }
+  .receipt-meta { display:flex; justify-content:center; flex-wrap:wrap; gap:1mm 8mm; margin-bottom:3mm; font-size:10.5pt; }
+  .receipt-meta > div { display:flex; gap:1.5mm; min-width:0; }
+  .receipt-meta span { color:#666; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1mm 6mm; font-size: 11pt; margin-bottom: 3mm; padding: 2mm 3mm; border: 1px solid #bbb; border-radius: 2mm; background: #fafafa; }
+  .info-grid > div { display:flex; align-items:flex-start; gap:3mm; }
+  .info-label { color: #666; font-size: 9.5pt; width:82px; flex-shrink:0; }
+  .info-val   { font-weight: bold; font-size: 11pt; overflow-wrap:anywhere; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 3mm; font-size: 11.5pt; }
+  th { border: 1px solid #888; padding: 1.7mm 2mm; font-weight: bold; font-size: 11pt; background:#e0e0e0; }
+  td { border: 1px solid #bbb; padding: 1.7mm 2mm; vertical-align: middle; }
+  tfoot td { background: #f2f2f2; font-weight: bold; font-size: 11.5pt; }
+  .product-code { margin-top:.5mm; font-size:9pt; color:#666; font-weight:normal; }
+  .grand-total td { font-size:15.5pt; }
+  .payment-summary { display:flex; justify-content:flex-end; align-items:baseline; gap:4mm; margin:-1mm 0 3mm; font-size:10.5pt; }
+  .inv-note { font-size: 11.5pt; color: #444; margin-bottom: 3mm; padding: 1.5mm 0; border-top: 1px dashed #ccc; }
+  .inv-signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; margin-top: 3mm; }
+  .sign-box { display:flex; flex-direction:column; align-items:center; text-align: center; font-size: 12.5pt; }
+  .sign-title { font-weight: bold; }
+  .sign-line { min-height: 16mm; width: 90%; }
+  .sign-hint { font-size: 10.5pt; color: #444; line-height:1.1; }
+  .legal-note { margin-top:2mm; color:#777; text-align:center; font-size:9pt; font-style:italic; }
+</style>
+</head><body>
+<div class="biz-header">
+  <div class="biz-name">${esc(BIZ.name)}</div>
+  <div class="biz-contact">Địa chỉ: ${esc(BIZ.address)}</div>
+  <div class="biz-contact">Điện thoại: ${esc(BIZ.phone)}${BIZ.tax_code ? ` &nbsp;|&nbsp; MST: ${esc(BIZ.tax_code)}` : ''}</div>
+</div>
+<div class="inv-title">Bảng Báo Giá</div>
+<div class="receipt-meta">
+  <div><span>Thời gian lập</span><strong>${timeStr}</strong></div>
+</div>
+<div class="info-grid">
+  <div ${phone ? '' : 'style="grid-column:1/-1"'}><div class="info-label">Khách hàng</div><div class="info-val">${esc(customer)}</div></div>
+  ${phone ? `<div><div class="info-label">Điện thoại</div><div class="info-val">${esc(phone)}</div></div>` : ''}
+  ${address ? `<div style="grid-column:1/-1"><div class="info-label">Địa chỉ</div><div class="info-val">${esc(address)}</div></div>` : ''}
+</div>
+<table>
+  <thead>
+    <tr>
+      <th style="width:36px;text-align:center">STT</th>
+      <th style="text-align:left">Tên hàng hóa</th>
+      <th style="width:80px;text-align:center">Số lượng</th>
+      <th style="width:56px;text-align:center">ĐVT</th>
+      <th style="width:115px;text-align:right">Đơn giá</th>
+      <th style="width:125px;text-align:right">Thành tiền</th>
+    </tr>
+  </thead>
+  <tbody>${rows}</tbody>
+  <tfoot>
+    ${shipping_fee > 0 ? `<tr>
+      <td colspan="5" style="text-align:right">Tổng hàng hóa:</td>
+      <td style="text-align:right">${fmtM(subtotal)}</td>
+    </tr><tr>
+      <td colspan="5" style="text-align:right">Phí vận chuyển:</td>
+      <td style="text-align:right">${fmtM(shipping_fee)}</td>
+    </tr>` : ''}
+    <tr class="grand-total">
+      <td colspan="5" style="text-align:right;font-weight:bold">TỔNG CỘNG:</td>
+      <td style="text-align:right;font-weight:bold">${fmtM(total)}</td>
+    </tr>
+  </tfoot>
+</table>
+<div class="payment-summary"><span>Dự kiến thanh toán</span><strong>${payLabel[payment]||payment||'Chưa xác định'}</strong></div>
+${note ? `<div class="inv-note"><b>Ghi chú:</b> ${esc(note)}</div>` : ''}
+<div class="inv-signatures">
+  <div class="sign-box">
+    <div class="sign-title">Khách hàng</div>
+    <div class="sign-line"></div>
+    <div class="sign-hint">(Xem xét và xác nhận)</div>
+  </div>
+  <div class="sign-box">
+    <div class="sign-title">Người báo giá</div>
+    <div class="sign-line"></div>
+    <div class="sign-hint">(Ký, ghi rõ họ tên)</div>
+  </div>
+</div>
+<div class="legal-note">Đây là bảng báo giá tham khảo, không có giá trị thanh toán hay xuất kho. Giá cả có thể thay đổi tùy thời điểm.</div>
+<script>window.onload = function(){ window.print(); window.close(); }<\/script>
+</body></html>`);
+  win.document.close();
+}
+</script>
+<div class="modal fade" id="confirmClearModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-body text-center p-4">
+        <i class="bi bi-trash text-danger mb-3" style="font-size: 3rem;"></i>
+        <h5 class="mb-3" style="font-weight:700">Xóa hóa đơn?</h5>
+        <p class="text-muted mb-4" style="font-size:14px">Bạn có chắc muốn xóa toàn bộ sản phẩm khỏi hóa đơn này?</p>
+        <div class="d-flex justify-content-center gap-2">
+          <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Hủy</button>
+          <button type="button" class="btn btn-danger px-4" onclick="clearInvoice()">Xóa</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function clearInvoice() {
+  invoiceItems = [];
+  renderItems();
+  const modalEl = document.getElementById('confirmClearModal');
+  const modal = bootstrap.Modal.getInstance(modalEl);
+  if(modal) modal.hide();
+}
 </script>
 
 <?php include BASE_PATH . '/views/layouts/footer.php'; ?>

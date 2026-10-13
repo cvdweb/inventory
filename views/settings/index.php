@@ -13,6 +13,26 @@ include BASE_PATH . '/views/layouts/header.php';
 
 <div class="row g-3">
   <div class="col-lg-7">
+    <?php $themes = systemThemes(); $activeTheme = currentThemeKey(); ?>
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-palette-fill me-2"></i>Màu Giao Diện</div>
+      <div class="card-body">
+        <p class="text-muted mb-3" style="font-size:12.5px">Chọn màu phù hợp với cửa hàng vật liệu xây dựng. Thay đổi được xem trước ngay và lưu cùng cài đặt.</p>
+        <div class="theme-grid">
+          <?php foreach ($themes as $key => $theme): ?>
+          <label class="theme-option <?= $activeTheme === $key ? 'is-selected' : '' ?>">
+            <input type="radio" name="theme" value="<?= htmlspecialchars($key) ?>" form="settingsForm"
+              <?= $activeTheme === $key ? 'checked' : '' ?> onchange="applyThemePreview('<?= htmlspecialchars($key) ?>')">
+            <span class="theme-swatch" style="--sw:<?= htmlspecialchars($theme['accent']) ?>;--sw2:<?= htmlspecialchars($theme['accent_dark']) ?>;--sw3:<?= htmlspecialchars($theme['sidebar']) ?>">
+              <i class="bi bi-check-lg"></i>
+            </span>
+            <span class="theme-name"><?= htmlspecialchars($theme['label']) ?></span>
+          </label>
+          <?php endforeach; ?>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-header"><i class="bi bi-shop me-2"></i>Thông Tin Cửa Hàng / Doanh Nghiệp</div>
       <div class="card-body">
@@ -112,7 +132,46 @@ include BASE_PATH . '/views/layouts/header.php';
   </div>
 </div>
 
+<style>
+.theme-grid{display:grid;gap:10px;grid-template-columns:repeat(3,minmax(0,1fr))}
+.theme-option{align-items:center;border:1px solid var(--border);border-radius:8px;cursor:pointer;display:flex;gap:10px;margin:0;padding:10px;transition:.15s}
+.theme-option:hover{border-color:var(--accent)}
+.theme-option.is-selected{background:var(--accent-softer);border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-ring)}
+.theme-option input{opacity:0;pointer-events:none;position:absolute}
+.theme-swatch{align-items:center;background:linear-gradient(135deg,var(--sw) 0%,var(--sw) 55%,var(--sw2) 55%,var(--sw2) 100%);border-radius:7px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.35);color:#fff;display:flex;flex-shrink:0;height:34px;justify-content:center;width:34px}
+.theme-swatch i{font-size:16px;opacity:0;transition:.15s}
+.theme-option.is-selected .theme-swatch i{opacity:1}
+.theme-name{color:var(--text-mid);font-size:12.5px;font-weight:700}
+.theme-option.is-selected .theme-name{color:var(--accent-dark)}
+@media(max-width:575.98px){.theme-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+
 <script>
+const THEMES = <?= json_encode($themes, JSON_UNESCAPED_UNICODE) ?>;
+function _hexToRgb(hex) {
+  hex = String(hex).replace('#', '');
+  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+  const n = parseInt(hex, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255].join(',');
+}
+function applyThemePreview(key) {
+  const t = THEMES[key];
+  if (!t) return;
+  const rgb = _hexToRgb(t.accent);
+  const r = document.documentElement.style;
+  r.setProperty('--accent', t.accent);
+  r.setProperty('--accent-dark', t.accent_dark);
+  r.setProperty('--sidebar-active', t.accent);
+  r.setProperty('--bg-sidebar', t.sidebar);
+  r.setProperty('--sidebar-active-bg', `rgba(${rgb},.12)`);
+  r.setProperty('--accent-soft', `rgba(${rgb},.12)`);
+  r.setProperty('--accent-softer', `rgba(${rgb},.08)`);
+  r.setProperty('--accent-ring', `rgba(${rgb},.15)`);
+  r.setProperty('--accent-glow', `rgba(${rgb},.3)`);
+  r.setProperty('--accent-glow-strong', `rgba(${rgb},.4)`);
+  r.setProperty('--accent-avatar', `rgba(${rgb},.2)`);
+  document.querySelectorAll('.theme-option').forEach(l => l.classList.toggle('is-selected', l.querySelector('input').value === key));
+}
 function _sv(id) { const el = document.getElementById(id); return el ? el.value : ''; }
 function updateSettingsPreview() {
   const store = _sv('storeNameInput');

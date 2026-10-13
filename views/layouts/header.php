@@ -9,7 +9,7 @@ $topbarContext = trim((string)($topbarParts[1] ?? ''));
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#111827">
+<meta name="theme-color" content="<?= htmlspecialchars(themeColor()) ?>">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="<?= htmlspecialchars(storeName()) ?>">
@@ -23,6 +23,7 @@ $topbarContext = trim((string)($topbarParts[1] ?? ''));
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="assets/css/style.css?v=<?= filemtime(BASE_PATH . '/assets/css/style.css') ?>">
+<?= themeCssTag() ?>
 </head>
 <body>
 

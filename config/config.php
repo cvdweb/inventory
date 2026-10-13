@@ -3,10 +3,37 @@
 // CẤU HÌNH HỆ THỐNG QUẢN LÝ NHẬP XUẤT HÀNG HÓA
 // ============================================================
 
-define('APP_NAME', 'Quản Lý Nhập Xuất Hàng Hóa');
 define('APP_VERSION', '1.0.0');
 define('BASE_PATH', dirname(__DIR__));
 define('DATA_PATH', BASE_PATH . '/data');
+
+// Cài đặt hệ thống do người dùng thiết lập trong trang "Cài Đặt".
+// Cho phép copy dự án và chỉ cần đổi tên cửa hàng tại đây.
+$systemSettingsFile = DATA_PATH . '/system_settings.json';
+$systemSettings = [];
+if (is_file($systemSettingsFile)) {
+    $decodedSettings = json_decode((string)@file_get_contents($systemSettingsFile), true);
+    if (is_array($decodedSettings)) $systemSettings = $decodedSettings;
+}
+// Fallback: thông tin khách hàng đã nhập ở hồ sơ giấy phép (bản cũ chưa có Cài Đặt).
+$licenseCustomer = [];
+$systemLicenseFile = DATA_PATH . '/system_license.json';
+if (is_file($systemLicenseFile)) {
+    $decodedLicense = json_decode((string)@file_get_contents($systemLicenseFile), true);
+    if (is_array($decodedLicense) && is_array($decodedLicense['customer'] ?? null)) {
+        $licenseCustomer = $decodedLicense['customer'];
+    }
+}
+$settingValue = function (string $key) use ($systemSettings, $licenseCustomer): string {
+    $value = trim((string)($systemSettings[$key] ?? ''));
+    if ($value === '') $value = trim((string)($licenseCustomer[$key === 'store_name' ? 'name' : $key] ?? ''));
+    return $value;
+};
+$settingStoreName = trim((string)($systemSettings['store_name'] ?? '')) ?: trim((string)($licenseCustomer['name'] ?? ''));
+
+define('APP_NAME', trim((string)($systemSettings['app_name'] ?? '')) !== ''
+    ? (string)$systemSettings['app_name']
+    : 'Quản Lý Nhập Xuất Hàng Hóa');
 define('SESSION_TIMEOUT', 7200); // 2 giờ
 define('LOGIN_MAX_ATTEMPTS', 5);
 define('LOGIN_ATTEMPT_WINDOW', 900); // 15 phút
@@ -33,13 +60,14 @@ define('PRIVATE_BACKUP_PATH', $configuredBackupPath);
 // THÔNG TIN DOANH NGHIỆP — hiển thị trên hóa đơn, phiếu giao
 // ============================================================
 define('BUSINESS', [
-    'name'    => 'Công ty TNHH TM & DV Trường Phú',  // Tên doanh nghiệp
-    'address' => 'Nam Sông Hậu, KV Cà Lăng A, p.Vĩnh Châu, TP. Cần Thơ', // Địa chỉ
-    'phone'   => '0299 6295999 - 6282666 DĐ: 0913 862162, Ngân: 0343317275', // Số điện thoại
-    'email'   => 'truongphuvlxd65@gmail.com', // Email
-    'tax_code'=> '',
-    'slogan'  => '',
+    'name'    => ($v = $settingValue('store_name')) !== '' ? $v : 'Công ty TNHH TM & DV Trường Phú', // Tên doanh nghiệp
+    'address' => ($v = $settingValue('address')) !== '' ? $v : 'Nam Sông Hậu, KV Cà Lăng A, p.Vĩnh Châu, TP. Cần Thơ', // Địa chỉ
+    'phone'   => ($v = $settingValue('phone')) !== '' ? $v : '0299 6295999 - 6282666 DĐ: 0913 862162, Ngân: 0343317275', // Số điện thoại
+    'email'   => ($v = $settingValue('email')) !== '' ? $v : 'truongphuvlxd65@gmail.com', // Email
+    'tax_code'=> $settingValue('tax_code'),
+    'slogan'  => trim((string)($systemSettings['slogan'] ?? '')),
 ]);
+unset($systemSettings, $systemSettingsFile, $decodedSettings, $licenseCustomer, $systemLicenseFile, $settingStoreName, $settingValue, $v);
 
 // Thông tin riêng từng chi nhánh (ghi đè BUSINESS nếu khác)
 define('BRANCH_INFO', [

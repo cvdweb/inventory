@@ -278,7 +278,7 @@ include BASE_PATH . '/views/layouts/header.php';
           </div>
           <div class="col-12">
             <label class="form-label">Số tiền *</label>
-            <input type="number" class="form-control" name="amount" id="cbAmount" min="1" step="1" inputmode="numeric" required>
+            <input type="text" inputmode="numeric" data-vn-money data-vn-money-reading="cbAmountWords" class="form-control" name="amount" id="cbAmount" placeholder="0" required><div class="form-text text-success fw-700 mt-1" id="cbAmountWords" style="display:none;font-size:13px"></div>
           </div>
           <div class="col-6">
             <label class="form-label">Ngày ghi nhận *</label>
@@ -356,7 +356,8 @@ function openCashbookModal(type, btn = null) {
     ? '<i class="bi bi-dash-circle me-2 text-danger"></i>' + (entry.id ? 'Sửa khoản chi' : 'Thêm khoản chi')
     : '<i class="bi bi-plus-circle me-2 text-success"></i>' + (entry.id ? 'Sửa khoản thu' : 'Thêm khoản thu');
   fillCategory(type, entry.category || '');
-  document.getElementById('cbAmount').value = entry.amount || '';
+  document.getElementById('cbAmount').value = formatVnNumber(entry.amount || 0);
+    formatVnMoneyInputField(document.getElementById('cbAmount'));
   document.getElementById('cbMethod').value = entry.method || 'cash';
   document.getElementById('cbPerson').value = entry.person || '';
   document.getElementById('cbDescription').value = entry.description || '';

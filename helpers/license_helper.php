@@ -194,7 +194,7 @@ function licenseSaveSettings(array $post): array
         'activated_at' => trim($post['activated_at'] ?? date('Y-m-d')),
         'note' => trim($post['note'] ?? ''),
     ];
-    $license['pricing']['monthly_price'] = max(0, _parseMoneyNumber($post['monthly_price'] ?? 200000));
+    $license['pricing']['monthly_price'] = max(0, parseVnMoney($post['monthly_price'] ?? 200000));
     $license['policy']['warn_before_days'] = max(0, (int)($post['warn_before_days'] ?? 15));
     $license['policy']['grace_days'] = max(0, (int)($post['grace_days'] ?? 7));
     $license['policy']['block_write_when_expired'] = !empty($post['block_write_when_expired']);
@@ -207,9 +207,19 @@ function licenseSaveSettings(array $post): array
         return ['success' => false, 'message' => 'Mã số thuế phải gồm 10 chữ số hoặc dạng 10 chữ số-3 chữ số'];
     }
 
-    return licenseSave($license)
-        ? ['success' => true, 'message' => 'Đã cập nhật cấu hình giấy phép']
-        : ['success' => false, 'message' => 'Không lưu được cấu hình giấy phép'];
+    if (!licenseSave($license)) {
+        return ['success' => false, 'message' => 'Không lưu được cấu hình giấy phép'];
+    }
+    // Giữ tên cửa hàng trong Cài Đặt đồng bộ với hồ sơ giấy phép.
+    if (function_exists('systemSettingsWrite') && trim((string)($license['customer']['name'] ?? '')) !== '') {
+        systemSettingsWrite([
+            'store_name' => $license['customer']['name'],
+            'address'    => $license['customer']['address'] ?? '',
+            'phone'      => $license['customer']['phone'] ?? '',
+            'tax_code'   => $license['customer']['tax_code'] ?? '',
+        ]);
+    }
+    return ['success' => true, 'message' => 'Đã cập nhật cấu hình giấy phép'];
 }
 
 function licenseAddPayment(array $post): array
@@ -218,7 +228,7 @@ function licenseAddPayment(array $post): array
     $months = max(1, (int)($post['package_months'] ?? 1));
     $calc = licensePaymentAmount($license, $months);
     $amount = isset($post['amount']) && trim((string)$post['amount']) !== ''
-        ? _parseMoneyNumber($post['amount'])
+        ? parseVnMoney($post['amount'])
         : (float)$calc['amount'];
     $paidAt = trim($post['paid_at'] ?? date('Y-m-d'));
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $paidAt)) {
@@ -273,7 +283,7 @@ function licenseUpdateLock(array $post): array
 function licenseWriteAllowedPage(string $page, string $action = ''): bool
 {
     if (isSuperAdmin()) return true;
-    if (in_array($page, ['profile', 'logout'], true)) return true;
+    if (in_array($page, ['profile', 'logout', 'settings'], true)) return true;
     if ($page === 'backup') return (bool)(licenseGet()['policy']['allow_backup_when_expired'] ?? true);
     return !licenseStatus()['write_blocked'];
 }

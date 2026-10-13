@@ -78,11 +78,11 @@ function inventoryAdjustmentCreate(string $branch, array $post, bool $insideTran
 
         $systemQty = (float)($product['stock'] ?? 0);
         if ($type === 'stocktake') {
-            $actualQty = (float)($item['actual_qty'] ?? -1);
+            $actualQty = isset($item['actual_qty']) ? parseVnQuantity($item['actual_qty']) : -1;
             if ($actualQty < 0) return ['success' => false, 'message' => "Tồn thực tế của {$product['name']} không hợp lệ"];
             $difference = $actualQty - $systemQty;
         } else {
-            $adjustQty = (float)($item['adjust_qty'] ?? 0);
+            $adjustQty = parseVnQuantity($item['adjust_qty'] ?? 0);
             if ($adjustQty <= 0) return ['success' => false, 'message' => "Số lượng điều chỉnh của {$product['name']} phải lớn hơn 0"];
             $actualQty = null;
             $difference = $type === 'increase' ? $adjustQty : -$adjustQty;

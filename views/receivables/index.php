@@ -295,7 +295,7 @@ include BASE_PATH . '/views/layouts/header.php';
         <div class="row g-2">
           <div class="col-12">
             <label class="form-label">Số tiền thu</label>
-            <input type="number" class="form-control" name="amount" id="payAmount" min="1" step="1" inputmode="numeric" required>
+            <input type="text" inputmode="numeric" data-vn-money data-vn-money-reading="payAmountWords" class="form-control" name="amount" id="payAmount" placeholder="0" required><div class="form-text text-success fw-700 mt-1" id="payAmountWords" style="display:none;font-size:13px"></div>
           </div>
           <div class="col-6">
             <label class="form-label">Ngày thu</label>

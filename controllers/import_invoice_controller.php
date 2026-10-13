@@ -11,8 +11,8 @@ function importProcess(array $post, bool $insideTransaction = false): array
     }
     $category = $post['category'] ?? '';
     $code     = $post['product_code'] ?? '';
-    $qty      = floatval($post['qty'] ?? 0);
-    $price    = floatval($post['price_in'] ?? 0);
+    $qty      = parseVnQuantity($post['qty'] ?? 0);
+    $price    = parseVnMoney($post['price_in'] ?? 0);
     $date     = $post['import_date'] ?? date('Y-m-d');
     $note     = $post['note'] ?? '';
     $supplier = $post['supplier'] ?? '';
@@ -75,7 +75,7 @@ function invoiceProcess(array $post, bool $insideTransaction = false): array
     $delivery_note= $post['delivery_note'] ?? '';
     $payment      = $post['payment']       ?? 'cash';
     $delivery_date= $post['delivery_date'] ?? '';   // rỗng = lấy tại quầy
-    $shipping_fee = floatval($post['shipping_fee'] ?? 0);  // Giá vận chuyển
+    $shipping_fee = parseVnMoney($post['shipping_fee'] ?? 0);  // Giá vận chuyển
     $user         = currentUser();
 
     if ($payment === 'credit' && function_exists('featureEnabled') && !featureEnabled('receivables')) {
@@ -93,7 +93,7 @@ function invoiceProcess(array $post, bool $insideTransaction = false): array
     $processedItems = [];
     foreach ($items as $item) {
         $code = $item['code'] ?? '';
-        $qty  = floatval($item['qty'] ?? 0);
+        $qty  = parseVnQuantity($item['qty'] ?? 0);
         if (!$code || $qty <= 0) continue;
 
         $product = productGetByCode($branch, $code);
@@ -104,10 +104,10 @@ function invoiceProcess(array $post, bool $insideTransaction = false): array
             return ['success' => false, 'message' => "Sản phẩm '{$product['name']}' không đủ tồn kho (còn " . ($product['stock'] ?? 0) . " {$product['unit']})"];
         }
 
-        $priceOut = floatval($item['price_out'] ?? $product['price_out']);
+        $priceOut = parseVnMoney($item['price_out'] ?? $product['price_out']);
         $costPrice = floatval($product['price_in'] ?? 0);
         if ($priceOut <= 0) {
-            return ['success' => false, 'message' => "GiÃ¡ bÃ¡n cá»§a '{$product['name']}' pháº£i lá»›n hÆ¡n 0"];
+            return ['success' => false, 'message' => "Giá bán của '{$product['name']}' phải lớn hơn 0"];
         }
         $lineTotal = $qty * $priceOut;
         $processedItems[] = [
@@ -310,7 +310,7 @@ function updateInvoice(string $branch, string $invoiceId, array $post, bool $ins
     }
     foreach ($newItems as $item) {
         $code = $item['code'] ?? '';
-        $qty  = floatval($item['qty'] ?? 0);
+        $qty  = parseVnQuantity($item['qty'] ?? 0);
         if (!$code || $qty <= 0) continue;
 
         $product = productGetByCode($branch, $code, true);
@@ -329,13 +329,13 @@ function updateInvoice(string $branch, string $invoiceId, array $post, bool $ins
             return ['success' => false, 'message' => "'{$product['name']}' không đủ tồn kho (còn " . ($product['stock'] ?? 0) . " {$product['unit']})"];
         }
 
-        $priceOut = floatval($item['price_out'] ?? $product['price_out']);
+        $priceOut = parseVnMoney($item['price_out'] ?? $product['price_out']);
         $costPrice = $originalCostByCode[$code] ?? floatval($product['price_in'] ?? 0);
         if ($priceOut <= 0) {
             foreach ($original['items'] as $oldItem) {
                 updateStock($branch, $oldItem['product_code'], $oldItem['qty'], 'out');
             }
-            return ['success' => false, 'message' => "GiÃ¡ bÃ¡n cá»§a '{$product['name']}' pháº£i lá»›n hÆ¡n 0"];
+            return ['success' => false, 'message' => "Giá bán của '{$product['name']}' phải lớn hơn 0"];
         }
 
         $processedItems[] = [
@@ -356,7 +356,7 @@ function updateInvoice(string $branch, string $invoiceId, array $post, bool $ins
     }
 
     $subtotal = array_sum(array_column($processedItems, 'line_total'));
-    $shippingFee = floatval($post['shipping_fee'] ?? $original['shipping_fee'] ?? 0);
+    $shippingFee = parseVnMoney($post['shipping_fee'] ?? $original['shipping_fee'] ?? 0);
     $total = $subtotal + $shippingFee;
     if ($customerHasPayments) {
         $receivableCustomer = receivableFindCustomer($branch, $originalCustomerKey);

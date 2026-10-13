@@ -12,7 +12,7 @@ $topbarContext = trim((string)($topbarParts[1] ?? ''));
 <meta name="theme-color" content="#111827">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Trường Phú">
+<meta name="apple-mobile-web-app-title" content="<?= htmlspecialchars(storeName()) ?>">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title><?= htmlspecialchars($pageTitle ?? APP_NAME) ?> — <?= APP_NAME ?></title>
 <link rel="manifest" href="manifest.webmanifest">
@@ -31,8 +31,8 @@ $topbarContext = trim((string)($topbarParts[1] ?? ''));
   <div class="sidebar-brand">
     <div class="brand-icon"><i class="bi bi-box-seam-fill"></i></div>
     <div class="brand-text">
-      <div class="brand-name">QuanLy NX</div>
-      <div class="brand-sub">Nhập Xuất Hàng Hóa</div>
+      <div class="brand-name" title="<?= htmlspecialchars(storeName()) ?>"><?= htmlspecialchars(storeName()) ?></div>
+      <div class="brand-sub" title="<?= htmlspecialchars(systemName()) ?>"><?= htmlspecialchars(systemName()) ?></div>
     </div>
   </div>
 
@@ -98,6 +98,9 @@ $topbarContext = trim((string)($topbarParts[1] ?? ''));
     <?php if (in_array($user['role'] ?? '', ['superadmin', 'admin'], true)): ?>
     <a href="index.php?page=categories" class="nav-item <?= ($page === 'categories') ? 'active' : '' ?>">
       <i class="bi bi-collection-fill"></i><span>Nhóm Hàng</span>
+    </a>
+    <a href="index.php?page=settings" class="nav-item <?= ($page === 'settings') ? 'active' : '' ?>">
+      <i class="bi bi-gear-fill"></i><span>Cài Đặt</span>
     </a>
     <?php endif; ?>
     <?php if (canManageUsers()): ?>

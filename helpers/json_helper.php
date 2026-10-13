@@ -359,6 +359,207 @@ function formatMoney(float $amount): string
 }
 
 /**
+ * Phân tích chuỗi số tiền Việt Nam thành float an toàn.
+ * Hỗ trợ:
+ * - Dấu chấm phân cách hàng nghìn: "100.000", "1.500.000"
+ * - Dấu phẩy phân cách hàng nghìn (kiểu Excel): "100,000", "1,500,000"
+ * - Có kèm ký hiệu tiền tệ: "100.000 ₫", "150,000 đ", "1.000.000 VND"
+ * - Viết tắt tiện lợi: "50k", "50K" -> 50000, "1.5tr", "1,5tr", "1.5m", "1.5M" -> 1500000, "2ty", "2 tỷ" -> 2000000000
+ * - Thập phân không mong muốn từ Excel (ví dụ "100.000,00" hoặc "100,000.00") -> 100000
+ */
+function parseVnMoney($value): float
+{
+    if ($value === null || $value === '') return 0.0;
+    if (is_int($value) || is_float($value)) return max(0.0, (float)$value);
+
+    $str = trim((string)$value);
+    if ($str === '') return 0.0;
+
+    // Chuẩn hóa chữ thường không dấu và ký tự trắng
+    $clean = mb_strtolower($str, 'UTF-8');
+    $clean = str_replace(['₫', 'đ', 'vnd', 'vnđ', ' '], '', $clean);
+
+    // Kiểm tra các hậu tố viết tắt (k, tr, trieu, m, b, ty)
+    $multiplier = 1.0;
+    if (preg_match('/(ty|tỷ|b)$/u', $clean)) {
+        $multiplier = 1000000000.0;
+        $clean = preg_replace('/(ty|tỷ|b)$/u', '', $clean);
+    } elseif (preg_match('/(tr|trieu|triệu|m)$/u', $clean)) {
+        $multiplier = 1000000.0;
+        $clean = preg_replace('/(tr|trieu|triệu|m)$/u', '', $clean);
+    } elseif (preg_match('/(k|nghin|nghìn)$/u', $clean)) {
+        $multiplier = 1000.0;
+        $clean = preg_replace('/(k|nghin|nghìn)$/u', '', $clean);
+    }
+
+    $clean = preg_replace('/[^\d,.\-]/u', '', $clean);
+    if ($clean === '' || $clean === '-') return 0.0;
+
+    // Xử lý dấu phân cách
+    if (str_contains($clean, '.') && str_contains($clean, ',')) {
+        $lastDot = strrpos($clean, '.');
+        $lastComma = strrpos($clean, ',');
+        if ($lastComma > $lastDot) {
+            // Chuẩn VN: 1.000.000,00 -> . là nghìn, , là thập phân
+            $clean = str_replace('.', '', $clean);
+            $clean = str_replace(',', '.', $clean);
+        } else {
+            // Chuẩn US: 1,000,000.00 -> , là nghìn, . là thập phân
+            $clean = str_replace(',', '', $clean);
+        }
+    } elseif (str_contains($clean, '.')) {
+        // Chỉ có dấu chấm
+        if ($multiplier > 1.0) {
+            // ví dụ 1.5tr -> 1.5 * 1000000 = 1500000
+        } else {
+            // Tiền VNĐ thông thường: dấu chấm luôn là phân cách hàng nghìn (10.000, 1.500.000)
+            $clean = str_replace('.', '', $clean);
+        }
+    } elseif (str_contains($clean, ',')) {
+        // Chỉ có dấu phẩy
+        if ($multiplier > 1.0) {
+            // ví dụ 1,5tr -> 1.5 * 1000000 = 1500000
+            $clean = str_replace(',', '.', $clean);
+        } elseif (preg_match('/^\d{1,3}(,\d{3})+$/', $clean)) {
+            // Dấu phẩy kiểu US thousand separator: 10,000 hoặc 1,000,000
+            $clean = str_replace(',', '', $clean);
+        } else {
+            // Dấu phẩy thập phân (ví dụ 10000,50)
+            $clean = str_replace(',', '.', $clean);
+        }
+    }
+
+    $num = (float)$clean * $multiplier;
+    return max(0.0, round($num));
+}
+
+/**
+ * Phân tích số lượng / tồn kho / kích thước (có hỗ trợ số thập phân m2, kg...).
+ * Hỗ trợ: "1,5", "1.5", "1000", "1.000", "10.000", "0,25"
+ */
+function parseVnQuantity($value): float
+{
+    if ($value === null || $value === '') return 0.0;
+    if (is_int($value) || is_float($value)) return (float)$value;
+
+    $str = trim((string)$value);
+    if ($str === '') return 0.0;
+
+    $clean = preg_replace('/[^\d,.\-]/u', '', $str);
+    if ($clean === '' || $clean === '-') return 0.0;
+
+    if (str_contains($clean, '.') && str_contains($clean, ',')) {
+        $lastDot = strrpos($clean, '.');
+        $lastComma = strrpos($clean, ',');
+        if ($lastComma > $lastDot) {
+            // 1.000,5 -> 1000.5
+            $clean = str_replace('.', '', $clean);
+            $clean = str_replace(',', '.', $clean);
+        } else {
+            // 1,000.5 -> 1000.5
+            $clean = str_replace(',', '', $clean);
+        }
+    } elseif (str_contains($clean, ',')) {
+        if (preg_match('/^\d{1,3}(,\d{3})+$/', $clean)) {
+            // 1,000 -> 1000
+            $clean = str_replace(',', '', $clean);
+        } else {
+            // 1,5 -> 1.5
+            $clean = str_replace(',', '.', $clean);
+        }
+    } elseif (str_contains($clean, '.')) {
+        if (preg_match('/^\d{1,3}(\.\d{3})+$/', $clean)) {
+            // 1.000 hoặc 10.000 -> 1000 hoặc 10000
+            $clean = str_replace('.', '', $clean);
+        } else {
+            // 1.5 hoặc 0.25 -> 1.5 hoặc 0.25
+        }
+    }
+
+    return (float)$clean;
+}
+
+/**
+ * Định dạng số lượng theo phong cách Việt Nam (không số 0 thừa).
+ * Ví dụ: 1000 -> "1.000", 1.5 -> "1,5", 1000.5 -> "1.000,5"
+ */
+function formatVnQuantity(float $qty, string $unit = ''): string
+{
+    $formatted = number_format($qty, 3, ',', '.');
+    if (str_contains($formatted, ',')) {
+        $formatted = rtrim(rtrim($formatted, '0'), ',');
+    }
+    return $unit !== '' ? ($formatted . ' ' . $unit) : $formatted;
+}
+
+/**
+ * Đọc số tiền ra chữ tiếng Việt
+ * Ví dụ: 1500000 -> "Một triệu năm trăm nghìn đồng"
+ */
+function vnMoneyToWords(float $amount): string
+{
+    $amount = round($amount);
+    if ($amount <= 0) return 'Không đồng';
+
+    $digits = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+    $units = ['', 'nghìn', 'triệu', 'tỷ', 'nghìn tỷ', 'triệu tỷ'];
+
+    $readThreeDigits = function(int $n, bool $hasHigherGroup) use ($digits): string {
+        $h = intdiv($n, 100);
+        $t = intdiv($n % 100, 10);
+        $u = $n % 10;
+        $res = '';
+
+        if ($h > 0 || $hasHigherGroup) {
+            $res .= $digits[$h] . ' trăm ';
+        }
+
+        if ($t === 0) {
+            if ($u > 0 && ($h > 0 || $hasHigherGroup)) {
+                $res .= 'lẻ ' . $digits[$u] . ' ';
+            } elseif ($u > 0) {
+                $res .= $digits[$u] . ' ';
+            }
+        } elseif ($t === 1) {
+            $res .= 'mười ';
+            if ($u === 5) $res .= 'lăm ';
+            elseif ($u > 0) $res .= $digits[$u] . ' ';
+        } else {
+            $res .= $digits[$t] . ' mươi ';
+            if ($u === 1) $res .= 'mốt ';
+            elseif ($u === 4 && $t > 1) $res .= 'tư ';
+            elseif ($u === 5) $res .= 'lăm ';
+            elseif ($u > 0) $res .= $digits[$u] . ' ';
+        }
+        return trim($res);
+    };
+
+    $groups = [];
+    $temp = (int)$amount;
+    while ($temp > 0) {
+        $groups[] = $temp % 1000;
+        $temp = intdiv($temp, 1000);
+    }
+
+    $parts = [];
+    $groupCount = count($groups);
+    for ($i = $groupCount - 1; $i >= 0; $i--) {
+        $val = $groups[$i];
+        if ($val === 0) continue;
+        $hasHigher = ($i < $groupCount - 1);
+        $strGroup = $readThreeDigits($val, $hasHigher);
+        if ($strGroup !== '') {
+            $unit = $units[$i] ?? '';
+            $parts[] = $unit !== '' ? ($strGroup . ' ' . $unit) : $strGroup;
+        }
+    }
+
+    $result = implode(' ', $parts) . ' đồng';
+    $result = preg_replace('/\s+/', ' ', trim($result));
+    return mb_strtoupper(mb_substr($result, 0, 1, 'UTF-8'), 'UTF-8') . mb_substr($result, 1, null, 'UTF-8');
+}
+
+/**
  * Lấy danh sách khách hàng
  */
 function getCustomers(string $branch): array

@@ -73,11 +73,7 @@ function cashbookCanDelete(): bool
 
 function cashbookParseAmount($value): float
 {
-    if (is_numeric($value)) return (float)$value;
-    $value = preg_replace('/[^\d,.-]/', '', (string)$value);
-    $value = str_replace('.', '', $value);
-    $value = str_replace(',', '.', $value);
-    return (float)$value;
+    return parseVnMoney($value);
 }
 
 function cashbookYearMonthFromDate(string $date): string

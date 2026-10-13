@@ -219,8 +219,9 @@ html.pwa-standalone .pwa-desktop-nav-slot { display:block; }
   flex-shrink: 0;
 }
 
-.brand-name { font-size: 15px; font-weight: 700; color: #fff; line-height: 1.2; }
-.brand-sub  { font-size: 10px; color: var(--sidebar-text); letter-spacing: .5px; }
+.brand-text { flex: 1; min-width: 0; }
+.brand-name { font-size: 15px; font-weight: 700; color: #fff; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brand-sub  { font-size: 10px; color: var(--sidebar-text); letter-spacing: .5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .sidebar-user {
   display: flex;

@@ -69,8 +69,8 @@ function importBulkPreview(string $branch, array $post, array $file): array
         if (count(array_filter($row, fn($v) => trim((string)$v) !== '')) === 0) continue;
 
         $code = strtoupper(trim((string)$row[0]));
-        $qty = _parseMoneyNumber($row[1]);
-        $price = _parseMoneyNumber($row[2]);
+        $qty = parseVnQuantity($row[1]);
+        $price = parseVnMoney($row[2]);
         $note = trim((string)$row[3]);
         $rowErrors = [];
         if ($code === '') $rowErrors[] = 'Thiếu Mã SP';

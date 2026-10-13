@@ -27,20 +27,7 @@ function _parseSpecialColors($raw): array
 
 function _parseMoneyNumber($value): float
 {
-    $value = trim((string)$value);
-    if ($value === '') return 0;
-    $value = preg_replace('/[^\d,.\-]/u', '', $value);
-    if (str_contains($value, ',') && str_contains($value, '.')) {
-        $value = str_replace('.', '', $value);
-        $value = str_replace(',', '.', $value);
-    } elseif (preg_match('/^\d{1,3}(\.\d{3})+$/', $value)) {
-        $value = str_replace('.', '', $value);
-    } elseif (preg_match('/^\d{1,3}(,\d{3})+$/', $value)) {
-        $value = str_replace(',', '', $value);
-    } elseif (str_contains($value, ',')) {
-        $value = str_replace(',', '.', $value);
-    }
-    return max(0, (float)$value);
+    return parseVnMoney($value);
 }
 
 function _parseBulkSpecialColors(string $raw): array
@@ -150,8 +137,8 @@ function productSave(string $branch, string $category, array $data): array
             'unit'           => $unit,
             'price_in'       => $priceIn,
             'price_out'      => $priceOut,
-            'stock'          => floatval($data['stock'] ?? 0),
-            'min_stock'      => floatval($data['min_stock'] ?? 5),
+            'stock'          => parseVnQuantity($data['stock'] ?? 0),
+            'min_stock'      => parseVnQuantity($data['min_stock'] ?? 5),
             'special_colors' => $specialColors,
             'branch_id'      => $branch,
             'active'         => true,
@@ -172,7 +159,7 @@ function productSave(string $branch, string $category, array $data): array
                 $p['unit']            = $unit;
                 $p['price_in']        = $priceIn;
                 $p['price_out']       = $priceOut;
-                $p['min_stock']       = floatval($data['min_stock'] ?? $p['min_stock']);
+                $p['min_stock']       = parseVnQuantity($data['min_stock'] ?? $p['min_stock']);
                 $p['special_colors']  = $specialColors;
                 $p['updated_at']      = date('Y-m-d H:i:s');
                 // stock giữ nguyên — không ghi đè
@@ -321,11 +308,11 @@ function productBulkPreview(string $branch, string $category, array $file): arra
         $code = strtoupper(_csvProductValue($row, $headerMap, 'code'));
         $name = _csvProductValue($row, $headerMap, 'name');
         $unit = _csvProductValue($row, $headerMap, 'unit');
-        $priceIn = _parseMoneyNumber(_csvProductValue($row, $headerMap, 'price_in', '0'));
-        $priceOut = _parseMoneyNumber(_csvProductValue($row, $headerMap, 'price_out', '0'));
-        $stock = _parseMoneyNumber(_csvProductValue($row, $headerMap, 'stock', '0'));
+        $priceIn = parseVnMoney(_csvProductValue($row, $headerMap, 'price_in', '0'));
+        $priceOut = parseVnMoney(_csvProductValue($row, $headerMap, 'price_out', '0'));
+        $stock = parseVnQuantity(_csvProductValue($row, $headerMap, 'stock', '0'));
         $minStockRaw = _csvProductValue($row, $headerMap, 'min_stock', '5');
-        $minStock = _parseMoneyNumber($minStockRaw === '' ? 5 : $minStockRaw);
+        $minStock = parseVnQuantity($minStockRaw === '' ? 5 : $minStockRaw);
         $specialColors = $supportsColorSurcharge
             ? _parseBulkSpecialColors(_csvProductValue($row, $headerMap, 'special_colors'))
             : [];

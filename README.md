@@ -87,12 +87,14 @@ chmod 644 data/branch_1_vlxd/*.json
 chmod 644 data/branch_2_maiton/*.json
 ```
 
-### Bước 3: Cấu hình nếu cần
-Mở `config/config.php` để thay đổi:
-- Tên cửa hàng
-- Múi giờ
-- Thêm/bớt tài khoản người dùng
-- Thêm/bớt nhóm hàng
+### Bước 3: Đổi tên cửa hàng (triển khai cho khách hàng)
+Sau khi copy dự án, đăng nhập bằng tài khoản quản trị và vào **Cài Đặt** (menu *Hệ Thống*):
+- Đổi **Tên cửa hàng / doanh nghiệp**, tên hệ thống, địa chỉ, điện thoại, email, mã số thuế, slogan
+- Bấm **Lưu cài đặt** là xong
+
+Thông tin được lưu tại `data/system_settings.json` (tự động sao lưu) và áp dụng cho trang đăng nhập, tiêu đề trình duyệt, sidebar, hóa đơn và phiếu giao hàng.
+
+Các cấu hình khác vẫn chỉnh trong `config/config.php`: múi giờ, tài khoản mặc định, nhóm hàng mặc định.
 
 ### Bước 4: Truy cập
 ```

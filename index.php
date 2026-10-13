@@ -28,6 +28,7 @@ require_once __DIR__ . '/helpers/sales_return_helper.php';
 require_once __DIR__ . '/helpers/import_bulk_helper.php';
 require_once __DIR__ . '/helpers/receivable_helper.php';
 require_once __DIR__ . '/helpers/license_helper.php';
+require_once __DIR__ . '/helpers/settings_helper.php';
 require_once __DIR__ . '/helpers/report_helper.php';
 require_once __DIR__ . '/helpers/integrity_helper.php';
 require_once __DIR__ . '/helpers/inventory_adjustment_helper.php';
@@ -489,6 +490,17 @@ if ($page==='backup') {
     }
 }
 
+// SETTINGS
+if ($page==='settings') {
+    requireRole(['superadmin','admin']);
+    $action=$_GET['action']??'';
+    if ($action==='save' && $_SERVER['REQUEST_METHOD']=== 'POST') {
+        $r=systemSettingsSave($_POST);
+        $_SESSION['flash']=['type'=> $r['success']?'success':'danger','message'=> $r['message']];
+        header('Location: index.php?page=settings'); exit;
+    }
+}
+
 // RENDER
 $viewMap=[
     'dashboard'           => BASE_PATH.'/views/dashboard/index.php',
@@ -508,6 +520,7 @@ $viewMap=[
     'categories'          => BASE_PATH.'/views/categories/index.php',
     'help'                => BASE_PATH.'/views/help/index.php',
     'backup'              => BASE_PATH.'/views/backup/index.php',
+    'settings'            => BASE_PATH.'/views/settings/index.php',
     'edit_invoice'        => BASE_PATH.'/views/invoices/edit.php',
     'search_invoices'     => BASE_PATH.'/views/invoices/search.php',
     'profile'             => BASE_PATH.'/views/profile/index.php',

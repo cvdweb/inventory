@@ -56,13 +56,13 @@ include BASE_PATH . '/views/layouts/header.php';
           <div class="col-6">
             <label class="form-label">Số lượng *</label>
             <div class="input-group">
-              <input type="number" name="qty" id="importQty" class="form-control" min="0.001" step="0.001" required placeholder="0">
+              <input type="text" inputmode="decimal" data-vn-qty name="qty" id="importQty" class="form-control" required placeholder="0" oninput="updateImportSummary()">
               <span class="input-group-text" id="importUnit">đvt</span>
             </div>
           </div>
           <div class="col-6">
             <label class="form-label">Giá nhập (₫)</label>
-            <input type="number" name="price_in" id="importPrice" class="form-control" min="0" placeholder="0">
+            <input type="text" inputmode="numeric" data-vn-money data-vn-money-reading="importPriceWords" name="price_in" id="importPrice" class="form-control" placeholder="0" oninput="updateImportSummary()"><div class="form-text text-primary fw-600" id="importPriceWords" style="display:none"></div>
           </div>
         </div>
 

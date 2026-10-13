@@ -174,7 +174,7 @@ function receivableCreatePayment(string $branch, array $post): array
     $customer = $customerKey ? receivableFindCustomer($branch, $customerKey) : null;
     $name = trim($post['customer_name'] ?? ($customer['name'] ?? ''));
     $phone = trim($post['phone'] ?? ($customer['phone'] ?? ''));
-    $amount = (float)($post['amount'] ?? 0);
+    $amount = parseVnMoney($post['amount'] ?? 0);
     $paidAt = trim($post['paid_at'] ?? date('Y-m-d'));
 
     if (!$customerKey && ($name || $phone)) {

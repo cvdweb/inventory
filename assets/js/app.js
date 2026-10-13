@@ -38,12 +38,169 @@ overlay.addEventListener('click', () => {
 
 // Format money VND
 function formatMoney(amount) {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
 }
 
 // Format number
 function formatNum(n) {
-  return new Intl.NumberFormat('vi-VN').format(n);
+  return new Intl.NumberFormat('vi-VN').format(n || 0);
+}
+
+// Parse money string to number (supports: "100.000", "1,000,000", "50k", "1.5tr", "1,5tr", "2.5M", "500.000 ₫")
+function parseVnMoney(val) {
+  if (val === null || val === undefined || val === '') return 0;
+  if (typeof val === 'number') return Math.max(0, isNaN(val) ? 0 : val);
+
+  let str = String(val).trim().toLowerCase();
+  str = str.replace(/[₫đvndvnđ\s]/g, '');
+
+  let multiplier = 1;
+  if (/(ty|tỷ|b)$/i.test(str)) {
+    multiplier = 1000000000;
+    str = str.replace(/(ty|tỷ|b)$/i, '');
+  } else if (/(tr|trieu|triệu|m)$/i.test(str)) {
+    multiplier = 1000000;
+    str = str.replace(/(tr|trieu|triệu|m)$/i, '');
+  } else if (/(k|nghin|nghìn)$/i.test(str)) {
+    multiplier = 1000;
+    str = str.replace(/(k|nghin|nghìn)$/i, '');
+  }
+
+  str = str.replace(/[^\d,.\-]/g, '');
+  if (!str || str === '-') return 0;
+
+  if (str.includes('.') && str.includes(',')) {
+    const lastDot = str.lastIndexOf('.');
+    const lastComma = str.lastIndexOf(',');
+    if (lastComma > lastDot) {
+      str = str.replace(/\./g, '').replace(',', '.');
+    } else {
+      str = str.replace(/,/g, '');
+    }
+  } else if (str.includes('.')) {
+    if (multiplier > 1) {
+      // Shorthand decimal, e.g. 1.5tr
+    } else {
+      str = str.replace(/\./g, '');
+    }
+  } else if (str.includes(',')) {
+    if (multiplier > 1) {
+      str = str.replace(',', '.');
+    } else if (/^\d{1,3}(,\d{3})+$/.test(str)) {
+      str = str.replace(/,/g, '');
+    } else {
+      str = str.replace(',', '.');
+    }
+  }
+
+  const num = (parseFloat(str) || 0) * multiplier;
+  return Math.max(0, Math.round(num));
+}
+
+// Parse quantity / stock / measurement (supports: "1,5", "1.5", "1000", "1.000", "10.000", "0,25")
+function parseVnQty(val) {
+  if (val === null || val === undefined || val === '') return 0;
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+
+  let str = String(val).trim().replace(/[^\d,.\-]/g, '');
+  if (!str || str === '-') return 0;
+
+  if (str.includes('.') && str.includes(',')) {
+    const lastDot = str.lastIndexOf('.');
+    const lastComma = str.lastIndexOf(',');
+    if (lastComma > lastDot) {
+      str = str.replace(/\./g, '').replace(',', '.');
+    } else {
+      str = str.replace(/,/g, '');
+    }
+  } else if (str.includes(',')) {
+    if (/^\d{1,3}(,\d{3})+$/.test(str)) {
+      str = str.replace(/,/g, '');
+    } else {
+      str = str.replace(',', '.');
+    }
+  } else if (str.includes('.')) {
+    if (/^\d{1,3}(\.\d{3})+$/.test(str)) {
+      str = str.replace(/\./g, '');
+    }
+  }
+
+  return parseFloat(str) || 0;
+}
+
+// Format integer to Vietnamese thousand format with dot (e.g. 10000 -> "10.000")
+function formatVnNumber(n) {
+  const num = Math.round(Number(n) || 0);
+  return new Intl.NumberFormat('vi-VN').format(num);
+}
+
+// Format quantity with dot thousand separator and comma decimal separator (e.g. 1.5 -> "1,5", 1000 -> "1.000")
+function formatVnQty(n, unit = '') {
+  const num = Number(n) || 0;
+  let formatted = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 }).format(num);
+  return unit ? `${formatted} ${unit}` : formatted;
+}
+
+// Read money amount in Vietnamese text
+function vnMoneyToWords(amount) {
+  amount = Math.round(Number(amount) || 0);
+  if (amount <= 0) return 'Không đồng';
+
+  const digits = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+  const units = ['', 'nghìn', 'triệu', 'tỷ', 'nghìn tỷ', 'triệu tỷ'];
+
+  function readThreeDigits(n, hasHigher) {
+    const h = Math.floor(n / 100);
+    const t = Math.floor((n % 100) / 10);
+    const u = n % 10;
+    let res = '';
+
+    if (h > 0 || hasHigher) {
+      res += digits[h] + ' trăm ';
+    }
+
+    if (t === 0) {
+      if (u > 0 && (h > 0 || hasHigher)) {
+        res += 'lẻ ' + digits[u] + ' ';
+      } else if (u > 0) {
+        res += digits[u] + ' ';
+      }
+    } else if (t === 1) {
+      res += 'mười ';
+      if (u === 5) res += 'lăm ';
+      else if (u > 0) res += digits[u] + ' ';
+    } else {
+      res += digits[t] + ' mươi ';
+      if (u === 1) res += 'mốt ';
+      else if (u === 4 && t > 1) res += 'tư ';
+      else if (u === 5) res += 'lăm ';
+      else if (u > 0) res += digits[u] + ' ';
+    }
+    return res.trim();
+  }
+
+  const groups = [];
+  let temp = amount;
+  while (temp > 0) {
+    groups.push(temp % 1000);
+    temp = Math.floor(temp / 1000);
+  }
+
+  const parts = [];
+  for (let i = groups.length - 1; i >= 0; i--) {
+    const val = groups[i];
+    if (val === 0) continue;
+    const hasHigher = (i < groups.length - 1);
+    const strGroup = readThreeDigits(val, hasHigher);
+    if (strGroup) {
+      const unit = units[i] || '';
+      parts.push(unit ? `${strGroup} ${unit}` : strGroup);
+    }
+  }
+
+  const result = parts.join(' ') + ' đồng';
+  const clean = result.replace(/\s+/g, ' ').trim();
+  return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
 
 // ============================================================
@@ -245,7 +402,100 @@ function initVnDateInputs() {
   });
 }
 
+// Vietnamese money inputs: auto thousand formatting with dot, shorthand expansion (k, tr, m), words reading.
+function updateVnMoneyReading(input, num) {
+  const readingTargetId = input.dataset.vnMoneyReading;
+  if (readingTargetId) {
+    const el = document.getElementById(readingTargetId);
+    if (el) {
+      if (num > 0) {
+        el.textContent = vnMoneyToWords(num);
+        el.style.display = '';
+      } else {
+        el.textContent = '';
+        el.style.display = 'none';
+      }
+    }
+  }
+}
+
+function formatVnMoneyInputField(input) {
+  const raw = input.value;
+  if (!raw || !raw.trim()) {
+    updateVnMoneyReading(input, 0);
+    return;
+  }
+
+  // Count non-dot characters before cursor
+  const selStart = input.selectionStart ?? raw.length;
+  const charsBefore = raw.slice(0, selStart).replace(/\./g, '').length;
+
+  const num = parseVnMoney(raw);
+  const formatted = num > 0 ? formatVnNumber(num) : (raw.trim() === '0' ? '0' : '');
+
+  input.value = formatted;
+
+  // Restore cursor position if input is focused
+  if (document.activeElement === input && formatted) {
+    let newCursor = 0;
+    let counted = 0;
+    for (let i = 0; i < formatted.length; i++) {
+      if (formatted[i] !== '.') counted++;
+      newCursor = i + 1;
+      if (counted >= charsBefore) break;
+    }
+    try { input.setSelectionRange(newCursor, newCursor); } catch(e) {}
+  }
+
+  updateVnMoneyReading(input, num);
+}
+
+function initVnMoneyInputs(root = document) {
+  root.querySelectorAll('input[data-vn-money]').forEach(input => {
+    if (input.dataset.vnMoneyInit === '1') return;
+    input.dataset.vnMoneyInit = '1';
+
+    input.inputMode = 'numeric';
+    input.autocomplete = 'off';
+
+    // Initial formatting
+    if (input.value && input.value.trim()) {
+      formatVnMoneyInputField(input);
+    } else {
+      updateVnMoneyReading(input, 0);
+    }
+
+    input.addEventListener('input', () => {
+      formatVnMoneyInputField(input);
+    });
+
+    input.addEventListener('blur', () => {
+      formatVnMoneyInputField(input);
+    });
+  });
+}
+
+function initVnQtyInputs(root = document) {
+  root.querySelectorAll('input[data-vn-qty]').forEach(input => {
+    if (input.dataset.vnQtyInit === '1') return;
+    input.dataset.vnQtyInit = '1';
+
+    input.inputMode = 'decimal';
+    input.autocomplete = 'off';
+
+    input.addEventListener('blur', () => {
+      const val = input.value.trim();
+      if (val !== '') {
+        const num = parseVnQty(val);
+        input.value = num > 0 ? formatVnQty(num) : '0';
+      }
+    });
+  });
+}
+
 initVnDateInputs();
+initVnMoneyInputs();
+initVnQtyInputs();
 
 // Confirm delete
 function confirmDelete(msg) {

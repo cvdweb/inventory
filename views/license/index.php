@@ -148,7 +148,7 @@ include BASE_PATH . '/views/layouts/header.php';
             <input type="hidden" name="activated_at" value="<?= htmlspecialchars($customer['activated_at'] ?? $customer['started_at'] ?? date('Y-m-d')) ?>">
             <div class="col-md-4">
               <label class="form-label">Phí tháng</label>
-              <input type="number" class="form-control" name="monthly_price" min="0" step="1" value="<?= htmlspecialchars((string)$monthlyPrice) ?>">
+              <input type="text" inputmode="numeric" data-vn-money class="form-control" name="monthly_price" value="<?= htmlspecialchars((string)$monthlyPrice) ?>">">
             </div>
             <div class="col-md-4">
               <label class="form-label">Cảnh báo trước hạn</label>
@@ -277,7 +277,7 @@ include BASE_PATH . '/views/layouts/header.php';
             </div>
             <div class="col-12">
               <label class="form-label">Số tiền thực thu</label>
-              <input type="number" class="form-control" name="amount" id="licenseAmount" min="1" step="1">
+              <input type="text" inputmode="numeric" data-vn-money data-vn-money-reading="licenseAmountWords" class="form-control" name="amount" id="licenseAmount"><div class="form-text text-primary fw-600" id="licenseAmountWords" style="display:none"></div>
               <div class="form-text">Để trống thì dùng số tiền gợi ý theo gói</div>
             </div>
             <div class="col-12">

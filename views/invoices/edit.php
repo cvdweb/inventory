@@ -114,9 +114,7 @@ include BASE_PATH . '/views/layouts/header.php';
           </div>
           <div class="col-md-2">
             <label class="form-label" style="font-size:11.5px">Giá vận chuyển</label>
-            <input type="number" name="shipping_fee" id="inpShippingFee"
-              class="form-control form-control-sm" min="0" step="1"
-              value="<?= htmlspecialchars($invoice['shipping_fee']??0) ?>"
+            <input type="text" inputmode="numeric" data-vn-money name="shipping_fee" id="inpShippingFee" class="form-control form-control-sm" value="<?= htmlspecialchars((string)($invoice['shipping_fee']??0)) ?>" placeholder="0 ₫" oninput="updateTotals()">"
               placeholder="0 &#8363;"
               oninput="updateTotals()">
           </div>
@@ -327,8 +325,13 @@ function addItem(p) {
 function removeItem(code) { invoiceItems=invoiceItems.filter(i=>i.code!==code); renderItems(); }
 function setQty(code,val) {
   const item=invoiceItems.find(i=>i.code===code); if(!item) return;
-  const n=parseFloat(val)||0;
+  const n=parseVnQty(val);
   if(n<=0){removeItem(code);return;}
+  if(n>item.stock){showToast(`Tồn kho chỉ còn ${fmt(item.stock)} ${item.unit}`, 'warning');const inp=document.querySelector(`[data-qty="${code}"]`);if(inp)inp.value=formatVnQty(item.qty);return;}
+  item.qty=n; item.line_total=item.qty*item.price_out;
+  const lt=document.getElementById('lt_'+code); if(lt)lt.textContent=fmtM(item.line_total);
+  updateTotals(); syncJson();
+}
   if(n>item.stock){showToast(`Tồn kho chỉ còn ${fmt(item.stock)} ${item.unit}`,'warning');const inp=document.querySelector(`[data-qty="${code}"]`);if(inp)inp.value=item.qty;return;}
   item.qty=n; item.line_total=item.qty*item.price_out;
   const lt=document.getElementById('lt_'+code); if(lt)lt.textContent=fmtM(item.line_total);
@@ -336,7 +339,7 @@ function setQty(code,val) {
 }
 function setPrice(code,val) {
   const item=invoiceItems.find(i=>i.code===code); if(!item) return;
-  item.price_out=parseFloat(val)||0; item.line_total=item.qty*item.price_out;
+  item.price_out=parseVnMoney(val); item.line_total=item.qty*item.price_out;
   const lt=document.getElementById('lt_'+code); if(lt)lt.textContent=fmtM(item.line_total);
   updateTotals(); syncJson();
 }
@@ -361,7 +364,7 @@ function renderItems() {
 }
 function updateTotals() {
   const t=invoiceItems.reduce((s,i)=>s+i.line_total,0);
-  const shippingFee=parseFloat(document.getElementById('inpShippingFee')?.value||0);
+  const shippingFee=parseVnMoney(document.getElementById('inpShippingFee')?.value||0);
   const finalTotal=t+shippingFee;
   const el=document.getElementById('invoiceTotal'); if(el)el.textContent=fmtM(finalTotal);
   syncJson();

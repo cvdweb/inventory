@@ -108,7 +108,7 @@ function salesReturnCreate(string $branch, array $post, bool $insideTransaction 
     $merchandiseRefund = 0.0;
     foreach ($submitted as $item) {
         $code = trim((string)($item['code'] ?? ''));
-        $qty = (float)($item['qty'] ?? 0);
+        $qty = parseVnQuantity($item['qty'] ?? 0);
         $lineIndex = filter_var($item['line'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
         $lineKey = $lineIndex !== false ? $code . '#' . $lineIndex : '';
         if ($lineKey === '' || !isset($sold[$lineKey])) {
@@ -143,7 +143,7 @@ function salesReturnCreate(string $branch, array $post, bool $insideTransaction 
     if (!$items) return ['success'=>false,'message'=>'Không có mặt hàng trả hợp lệ'];
 
     $shippingAvailable = max(0, (float)($invoice['shipping_fee'] ?? 0) - (float)$reserved['shipping_refund']);
-    $shippingRefund = max(0, (float)($post['shipping_refund'] ?? 0));
+    $shippingRefund = max(0, parseVnMoney($post['shipping_refund'] ?? 0));
     if ($shippingRefund > $shippingAvailable + 0.000001) return ['success'=>false,'message'=>'Phí vận chuyển hoàn lại vượt số tiền còn có thể hoàn'];
     $refundMethod = (string)($post['refund_method'] ?? 'none');
     if (!in_array($refundMethod, ['none','cash','transfer','account_credit'], true)) $refundMethod = 'none';

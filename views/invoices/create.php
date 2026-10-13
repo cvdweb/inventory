@@ -854,8 +854,8 @@ include BASE_PATH . '/views/layouts/header.php';
             <label class="form-label" style="font-size:11.5px">
               <i class="bi bi-cash me-1 text-success"></i>Phí vận chuyển (₫)
             </label>
-            <input type="number" name="shipping_fee" id="inpShippingFee"
-              class="form-control form-control-sm" min="0" step="10" value="0"
+            <input type="text" inputmode="numeric" data-vn-money name="shipping_fee" id="inpShippingFee"
+              class="form-control form-control-sm" value="0" placeholder="0"
               onfocus="this.select()" oninput="updateTotals()">
           </div>
         </div>
@@ -1333,12 +1333,12 @@ function removeItem(code) {
 function setQty(code, val) {
   const item = invoiceItems.find(i => i.code === code);
   if (!item) return;
-  const n = parseFloat(val)||0;
+  const n = parseVnQty(val);
   if (n <= 0) { removeItem(code); return; }
   if (n > item.stock) {
     showToast(`Tồn kho chỉ còn ${fmt(item.stock)} ${item.unit}`, 'warning');
     const inp = document.querySelector(`[data-qty="${code}"]`);
-    if (inp) inp.value = item.qty; return;
+    if (inp) inp.value = formatVnQty(item.qty); return;
   }
   item.qty = n; item.line_total = item.qty * item.price_out;
   updateTotals(); syncJson();
@@ -1354,14 +1354,14 @@ function stepQty(code, delta) {
   }
   setQty(code, next);
   const inp = document.querySelector(`[data-qty="${code}"]`);
-  if (inp) inp.value = item.qty;
+  if (inp) inp.value = formatVnQty(item.qty);
 }
 
 // ── Cập nhật đơn giá ─────────────────────────────────────────
-function setPrice(code, val) {
+function setPrice(code, val, inputEl) {
   const item = invoiceItems.find(i => i.code === code);
   if (!item) return;
-  item.price_out  = parseFloat(val)||0;
+  item.price_out  = parseVnMoney(val);
   item.line_total = item.qty * item.price_out;
   updateTotals(); syncJson();
 }
@@ -1434,7 +1434,7 @@ function renderItems() {
 
 function updateTotals() {
   const subtotal = invoiceItems.reduce((s,i) => s + i.line_total, 0);
-  const shipping = parseFloat(document.getElementById('inpShippingFee')?.value || 0) || 0;
+  const shipping = parseVnMoney(document.getElementById('inpShippingFee')?.value || 0);
   const grand    = subtotal + shipping;
 
   // Subtotal
@@ -1489,7 +1489,7 @@ function updateMobileCart() {
   const openBtn = document.getElementById('mobileCartOpen');
   const count = invoiceItems.length;
   const subtotal = invoiceItems.reduce((sum, item) => sum + item.line_total, 0);
-  const shipping = parseFloat(document.getElementById('inpShippingFee')?.value || 0) || 0;
+  const shipping = parseVnMoney(document.getElementById('inpShippingFee')?.value || 0);
 
   if (countEl) {
     countEl.textContent = count ? 'Đã chọn ' + count + ' mặt hàng' : 'Chưa chọn sản phẩm';

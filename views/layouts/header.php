@@ -117,7 +117,7 @@ $topbarContext = trim((string)($topbarParts[1] ?? ''));
       <i class="bi bi-shield-check"></i><span>Toàn Vẹn Dữ Liệu</span>
     </a><?php endif; ?>
     <?php endif; ?>
-    <?php if (($user['role'] ?? '') === 'superadmin'): ?>
+    <?php if (in_array($user['role'] ?? '', ['superadmin', 'admin'], true)): ?>
     <a href="index.php?page=license" class="nav-item <?= ($page === 'license') ? 'active' : '' ?>">
       <i class="bi bi-key-fill"></i><span>Giấy Phép</span>
     </a>

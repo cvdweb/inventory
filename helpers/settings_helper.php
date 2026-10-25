@@ -13,14 +13,18 @@ define('SYSTEM_SETTINGS_FILE', DATA_PATH . '/system_settings.json');
 function systemSettingsDefaults(): array
 {
     return [
-        'store_name' => BUSINESS['name'] ?? '',
-        'app_name'   => APP_NAME,
-        'address'    => BUSINESS['address'] ?? '',
-        'phone'      => BUSINESS['phone'] ?? '',
-        'email'      => BUSINESS['email'] ?? '',
-        'tax_code'   => BUSINESS['tax_code'] ?? '',
-        'slogan'     => BUSINESS['slogan'] ?? '',
-        'theme'      => 'amber',
+        'store_name'      => BUSINESS['name'] ?? '',
+        'app_name'        => APP_NAME,
+        'address'         => BUSINESS['address'] ?? '',
+        'phone'           => BUSINESS['phone'] ?? '',
+        'email'           => BUSINESS['email'] ?? '',
+        'tax_code'        => BUSINESS['tax_code'] ?? '',
+        'slogan'          => BUSINESS['slogan'] ?? '',
+        'theme'           => 'amber',
+        'bank_name'       => '',
+        'bank_bin'        => '',
+        'bank_account_no' => '',
+        'bank_account_holder' => '',
     ];
 }
 
@@ -124,15 +128,22 @@ function systemSettingsSave(array $post): array
     $theme = (string)($post['theme'] ?? 'amber');
     if (!isset(systemThemes()[$theme])) $theme = 'amber';
 
+    $bankAccountNo = str_replace(' ', '', trim((string)($post['bank_account_no'] ?? '')));
+    $bankBin = str_replace(' ', '', trim((string)($post['bank_bin'] ?? '')));
+
     $values = [
-        'store_name' => $storeName,
-        'app_name'   => trim((string)($post['app_name'] ?? '')),
-        'address'    => trim((string)($post['address'] ?? '')),
-        'phone'      => trim((string)($post['phone'] ?? '')),
-        'email'      => trim((string)($post['email'] ?? '')),
-        'tax_code'   => $taxCode,
-        'slogan'     => trim((string)($post['slogan'] ?? '')),
-        'theme'      => $theme,
+        'store_name'         => $storeName,
+        'app_name'           => trim((string)($post['app_name'] ?? '')),
+        'address'            => trim((string)($post['address'] ?? '')),
+        'phone'              => trim((string)($post['phone'] ?? '')),
+        'email'              => trim((string)($post['email'] ?? '')),
+        'tax_code'           => $taxCode,
+        'slogan'             => trim((string)($post['slogan'] ?? '')),
+        'theme'              => $theme,
+        'bank_name'          => trim((string)($post['bank_name'] ?? '')),
+        'bank_bin'           => $bankBin,
+        'bank_account_no'    => $bankAccountNo,
+        'bank_account_holder'=> trim((string)($post['bank_account_holder'] ?? '')),
     ];
 
     if (!systemSettingsWrite($values)) {

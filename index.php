@@ -28,6 +28,7 @@ require_once __DIR__ . '/helpers/sales_return_helper.php';
 require_once __DIR__ . '/helpers/import_bulk_helper.php';
 require_once __DIR__ . '/helpers/receivable_helper.php';
 require_once __DIR__ . '/helpers/license_helper.php';
+require_once __DIR__ . '/helpers/license_payment_bank_helper.php';
 require_once __DIR__ . '/helpers/settings_helper.php';
 require_once __DIR__ . '/helpers/report_helper.php';
 require_once __DIR__ . '/helpers/integrity_helper.php';
@@ -87,29 +88,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $page !== 'license') {
 
 // LICENSE
 if ($page==='license') {
-    requireRole(['superadmin']);
+    requireRole(['superadmin','admin']);
     $action=$_GET['action']??'';
+    if (($_SESSION['user_info']['role']??'') !== 'superadmin') {
+        if (in_array($action, ['settings_save','payment_add','payment_delete','lock_update','features_save','renew_bank_save'], true)) {
+            $_SESSION['flash']=['type'=>'danger','message'=>'Chỉ superadmin mới có quyền thực hiện thao tác này'];
+            header('Location: index.php?page=license'); exit;
+        }
+    }
     if ($action==='settings_save' && $_SERVER['REQUEST_METHOD']==='POST') {
+        requireRole(['superadmin']);
         $r=licenseSaveSettings($_POST);
         $_SESSION['flash']=['type'=>$r['success']?'success':'danger','message'=>$r['message']];
         header('Location: index.php?page=license'); exit;
     }
+    if ($action==='renew_bank_save' && $_SERVER['REQUEST_METHOD']==='POST') {
+        requireRole(['superadmin']);
+        if (function_exists('licensePaymentBankSave')) {
+            $r = licensePaymentBankSave($_POST);
+        } else {
+            $r = ['success' => false, 'message' => 'Chưa tải helper tài khoản ngân hàng gia hạn'];
+        }
+        $_SESSION['flash']=['type'=>$r['success']?'success':'danger','message'=>$r['message']];
+        header('Location: index.php?page=license'); exit;
+    }
     if ($action==='payment_add' && $_SERVER['REQUEST_METHOD']==='POST') {
+        requireRole(['superadmin']);
         $r=licenseAddPayment($_POST);
         $_SESSION['flash']=['type'=>$r['success']?'success':'danger','message'=>$r['message']];
         header('Location: index.php?page=license'); exit;
     }
     if ($action==='payment_delete' && $_SERVER['REQUEST_METHOD']==='POST') {
+        requireRole(['superadmin']);
         $r=licenseDeletePayment($_POST['payment_id']??'');
         $_SESSION['flash']=['type'=>$r['success']?'success':'danger','message'=>$r['message']];
         header('Location: index.php?page=license'); exit;
     }
     if ($action==='lock_update' && $_SERVER['REQUEST_METHOD']==='POST') {
+        requireRole(['superadmin']);
         $r=licenseUpdateLock($_POST);
         $_SESSION['flash']=['type'=>$r['success']?'success':'danger','message'=>$r['message']];
         header('Location: index.php?page=license'); exit;
     }
     if ($action==='features_save' && $_SERVER['REQUEST_METHOD']==='POST') {
+        requireRole(['superadmin']);
         $r=featureSaveProfile((string)($_POST['feature_profile']??''));
         $_SESSION['flash']=['type'=>$r['success']?'success':'danger','message'=>$r['message']];
         header('Location: index.php?page=license#featureProfileCard'); exit;

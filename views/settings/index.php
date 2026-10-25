@@ -33,7 +33,7 @@ include BASE_PATH . '/views/layouts/header.php';
       </div>
     </div>
 
-    <div class="card">
+    <div class="card mb-3">
       <div class="card-header"><i class="bi bi-shop me-2"></i>Thông Tin Cửa Hàng / Doanh Nghiệp</div>
       <div class="card-body">
         <form method="POST" action="index.php?page=settings&action=save" id="settingsForm">
@@ -83,6 +83,44 @@ include BASE_PATH . '/views/layouts/header.php';
                 value="<?= htmlspecialchars($settings['slogan'] ?? '') ?>"
                 oninput="updateSettingsPreview()">
             </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><i class="bi bi-bank me-2"></i>Tài Khoản Ngân Hàng</div>
+      <div class="card-body">
+        <form method="POST" action="index.php?page=settings&action=save" id="settingsFormBank">
+          <?= csrfField() ?>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Tên ngân hàng</label>
+              <input class="form-control" name="bank_name" value="<?= htmlspecialchars($settings['bank_name'] ?? '') ?>" placeholder="VD: BIDV">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">BIN ngân hàng <a href="https://api.vietqr.io/v2/banks" target="_blank" class="text-decoration-none">(tra cứu)</a></label>
+              <input class="form-control font-monospace" name="bank_bin" value="<?= htmlspecialchars($settings['bank_bin'] ?? '') ?>" placeholder="VD: 970418">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Số tài khoản</label>
+              <input class="form-control font-monospace" name="bank_account_no" value="<?= htmlspecialchars($settings['bank_account_no'] ?? '') ?>" placeholder="VD: 7420733340">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Chủ tài khoản (viết hoa không dấu)</label>
+              <input class="form-control font-monospace text-uppercase" name="bank_account_holder" value="<?= htmlspecialchars($settings['bank_account_holder'] ?? '') ?>" placeholder="VD: NGUYEN VAN A">
+            </div>
+            <?php if (!empty($settings['bank_bin']) && !empty($settings['bank_account_no'])): ?>
+            <div class="col-12">
+              <div class="p-3 rounded-3 d-flex align-items-center gap-3" style="background:var(--bg-main);border:1px solid var(--border)">
+                <img src="https://img.vietqr.io/image/<?= htmlspecialchars($settings['bank_bin']) ?>-<?= htmlspecialchars($settings['bank_account_no']) ?>-compact2.png?accountName=<?= urlencode($settings['bank_account_holder'] ?? '') ?>" alt="QR" style="width:80px;height:80px;border-radius:8px;border:1px solid var(--border);background:#fff">
+                <div>
+                  <div class="fw-700"><?= htmlspecialchars($settings['bank_name'] ?? '') ?></div>
+                  <div class="text-muted" style="font-size:12.5px">STK: <?= htmlspecialchars($settings['bank_account_no'] ?? '') ?> | Chủ TK: <?= htmlspecialchars($settings['bank_account_holder'] ?? '') ?></div>
+                </div>
+              </div>
+            </div>
+            <?php endif; ?>
             <div class="col-12 d-flex align-items-center justify-content-between gap-2">
               <small class="text-muted">
                 <?php if (!empty($settings['updated_at'])): ?>
@@ -91,7 +129,7 @@ include BASE_PATH . '/views/layouts/header.php';
                   <i class="bi bi-info-circle me-1"></i>Đang dùng thông tin mặc định trong file cấu hình.
                 <?php endif; ?>
               </small>
-              <button class="btn btn-primary"><i class="bi bi-save me-1"></i>Lưu cài đặt</button>
+              <button class="btn btn-primary" form="settingsForm"><i class="bi bi-save me-1"></i>Lưu cài đặt</button>
             </div>
           </div>
         </form>

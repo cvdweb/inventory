@@ -22,14 +22,19 @@ $stateColor = match($status['state']) {
 };
 $pageTitle = 'Quản Lý Giấy Phép';
 include BASE_PATH . '/views/layouts/header.php';
-?>
+$isSuperAdmin = (($user['role'] ?? '') === 'superadmin');
+?> 
 
 <div class="page-header d-flex flex-wrap align-items-center justify-content-between gap-3">
   <div>
     <h2><i class="bi bi-key-fill me-2 text-danger"></i>Quản Lý Giấy Phép</h2>
-    <p>Cấu hình thời hạn sử dụng, thanh toán và quyền ghi dữ liệu của khách hàng</p>
+    <p><?= $isSuperAdmin ? 'Cấu hình thời hạn sử dụng, thanh toán và quyền ghi dữ liệu của khách hàng' : 'Thông tin giấy phép và hướng dẫn thanh toán gia hạn' ?></p>
   </div>
-  <div class="d-flex align-items-center gap-2"><a href="index.php?page=help&topic=license" class="btn btn-outline-secondary context-help-btn" title="Hướng dẫn quản lý giấy phép"><i class="bi bi-question-circle"></i><span class="context-help-label">Hướng dẫn</span></a><span class="badge bg-<?= $stateColor ?>" style="font-size:13px;padding:8px 12px"><?= htmlspecialchars($status['label']) ?></span></div>
+  <div class="d-flex align-items-center gap-2">
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#renewModal"><i class="bi bi-arrow-repeat me-1"></i>Gia hạn gói</button>
+    <a href="index.php?page=help&topic=license" class="btn btn-outline-secondary context-help-btn" title="Hướng dẫn quản lý giấy phép"><i class="bi bi-question-circle"></i><span class="context-help-label">Hướng dẫn</span></a>
+    <span class="badge bg-<?= $stateColor ?>" style="font-size:13px;padding:8px 12px"><?= htmlspecialchars($status['label']) ?></span>
+  </div>
 </div>
 
 <div class="row g-3 mb-4">
@@ -109,6 +114,7 @@ include BASE_PATH . '/views/layouts/header.php';
 
 <div class="row g-3">
   <div class="col-lg-7">
+    <?php if ($isSuperAdmin): ?>
     <div class="card mb-3">
       <div class="card-header"><i class="bi bi-building me-2"></i>Thông Tin Khách Hàng & Chính Sách</div>
       <div class="card-body">
@@ -143,12 +149,11 @@ include BASE_PATH . '/views/layouts/header.php';
               <label class="form-label">Ngày bắt đầu chu kỳ sử dụng</label>
               <input type="hidden" name="started_at" id="licenseStartedAtIso" value="<?= htmlspecialchars($customer['started_at'] ?? date('Y-m-d')) ?>">
               <input type="text" class="form-control" data-vn-date-target="licenseStartedAtIso" value="<?= htmlspecialchars($customer['started_at'] ?? date('Y-m-d')) ?>">
-
             </div>
             <input type="hidden" name="activated_at" value="<?= htmlspecialchars($customer['activated_at'] ?? $customer['started_at'] ?? date('Y-m-d')) ?>">
             <div class="col-md-4">
               <label class="form-label">Phí tháng</label>
-              <input type="text" inputmode="numeric" data-vn-money class="form-control" name="monthly_price" value="<?= htmlspecialchars((string)$monthlyPrice) ?>">">
+              <input type="text" inputmode="numeric" data-vn-money class="form-control" name="monthly_price" value="<?= htmlspecialchars((string)$monthlyPrice) ?>">
             </div>
             <div class="col-md-4">
               <label class="form-label">Cảnh báo trước hạn</label>
@@ -193,6 +198,42 @@ include BASE_PATH . '/views/layouts/header.php';
         </form>
       </div>
     </div>
+    <?php else: ?>
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-building me-2"></i>Thông Tin Giấy Phép</div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="text-muted" style="font-size:12px">Tên cửa hàng / khách hàng</div>
+            <div class="fw-600"><?= htmlspecialchars($customer['name'] ?? '-') ?></div>
+          </div>
+          <div class="col-md-6">
+            <div class="text-muted" style="font-size:12px">Người mua hệ thống</div>
+            <div class="fw-600"><?= htmlspecialchars($customer['owner'] ?? '-') ?></div>
+          </div>
+          <div class="col-md-6">
+            <div class="text-muted" style="font-size:12px">Số điện thoại</div>
+            <div class="fw-600"><?= htmlspecialchars($customer['phone'] ?? '-') ?></div>
+          </div>
+          <div class="col-md-6">
+            <div class="text-muted" style="font-size:12px">Địa chỉ</div>
+            <div class="fw-600"><?= htmlspecialchars($customer['address'] ?? '-') ?></div>
+          </div>
+          <div class="col-md-6">
+            <div class="text-muted" style="font-size:12px">Phí mỗi tháng</div>
+            <div class="fw-600"><?= licenseFormatMoney($monthlyPrice) ?></div>
+          </div>
+          <div class="col-md-6">
+            <div class="text-muted" style="font-size:12px">Ngày bắt đầu</div>
+            <div class="fw-600"><?= !empty($customer['started_at']) ? date('d/m/Y', strtotime($customer['started_at'])) : '-' ?></div>
+          </div>
+        </div>
+        <div class="alert alert-info mt-3 mb-0" style="font-size:12.5px">
+          <i class="bi bi-info-circle me-1"></i>Để gia hạn, bấm <strong>Gia hạn gói</strong> để xem thông tin tài khoản và mã QR thanh toán. Sau khi chuyển khoản, liên hệ để được xác nhận gia hạn.
+        </div>
+      </div>
+    </div>
+    <?php endif; ?>
 
     <div class="card">
       <div class="card-header"><i class="bi bi-receipt-cutoff me-2"></i>Lịch Sử Thanh Toán Giấy Phép</div>
@@ -200,11 +241,11 @@ include BASE_PATH . '/views/layouts/header.php';
         <div class="table-responsive">
           <table class="table table-hover mb-0">
             <thead><tr>
-              <th>Ngày</th><th>Gói</th><th class="text-end">Số tiền</th><th>Hình thức</th><th>Người ghi</th><th></th>
+              <th>Ngày</th><th>Gói</th><th class="text-end">Số tiền</th><th>Hình thức</th><th>Người ghi</th><?= $isSuperAdmin ? '<th></th>' : '' ?>
             </tr></thead>
             <tbody>
             <?php if (empty($payments)): ?>
-              <tr><td colspan="6"><div class="empty-state py-4"><i class="bi bi-receipt"></i><p>Chưa có thanh toán giấy phép</p></div></td></tr>
+              <tr><td colspan="<?= $isSuperAdmin ? 6 : 5 ?>"><div class="empty-state py-4"><i class="bi bi-receipt"></i><p>Chưa có thanh toán giấy phép</p></div></td></tr>
             <?php else: foreach ($payments as $p): ?>
               <tr>
                 <td>
@@ -221,6 +262,7 @@ include BASE_PATH . '/views/layouts/header.php';
                 <td class="text-end money fw-800"><?= licenseFormatMoney((float)($p['amount'] ?? 0)) ?></td>
                 <td><?= htmlspecialchars(match($p['method'] ?? '') {'cash'=>'Tiền mặt','transfer'=>'Chuyển khoản', default => ($p['method'] ?? '')}) ?></td>
                 <td><?= htmlspecialchars($p['created_by'] ?? '') ?></td>
+                <?php if ($isSuperAdmin): ?>
                 <td class="text-end">
                   <form method="POST" action="index.php?page=license&action=payment_delete" onsubmit="return confirm('Xóa lần thanh toán này?')" class="d-inline">
                     <?= csrfField() ?>
@@ -228,9 +270,10 @@ include BASE_PATH . '/views/layouts/header.php';
                     <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
                   </form>
                 </td>
+                <?php endif; ?>
               </tr>
               <?php if (!empty($p['note'])): ?>
-              <tr><td colspan="6" class="text-muted" style="font-size:12px">Ghi chú: <?= htmlspecialchars($p['note']) ?></td></tr>
+              <tr><td colspan="<?= $isSuperAdmin ? 6 : 5 ?>" class="text-muted" style="font-size:12px">Ghi chú: <?= htmlspecialchars($p['note']) ?></td></tr>
               <?php endif; ?>
             <?php endforeach; endif; ?>
             </tbody>
@@ -241,6 +284,38 @@ include BASE_PATH . '/views/layouts/header.php';
   </div>
 
   <div class="col-lg-5">
+    <?php if ($isSuperAdmin): ?>
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-bank me-2"></i>Tài khoản nhận thanh toán gia hạn</div>
+      <div class="card-body">
+        <?php $renewBankCfg = function_exists('licensePaymentBankGet') ? licensePaymentBankGet() : []; ?>
+        <form method="POST" action="index.php?page=license&action=renew_bank_save">
+          <?= csrfField() ?>
+          <div class="mb-2">
+            <label class="form-label">Tên ngân hàng</label>
+            <input class="form-control" name="renew_bank_name" value="<?= htmlspecialchars($renewBankCfg['bank_name'] ?? '') ?>" placeholder="VD: BIDV">
+          </div>
+          <div class="mb-2">
+            <label class="form-label">BIN ngân hàng <a href="https://api.vietqr.io/v2/banks" target="_blank" class="text-decoration-none">(tra cứu)</a></label>
+            <input class="form-control font-monospace" name="renew_bank_bin" value="<?= htmlspecialchars($renewBankCfg['bank_bin'] ?? '') ?>" placeholder="VD: 970418">
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Số tài khoản</label>
+            <input class="form-control font-monospace" name="renew_bank_account_no" value="<?= htmlspecialchars($renewBankCfg['bank_account_no'] ?? '') ?>" placeholder="VD: 7420733340">
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Chủ tài khoản (viết hoa không dấu)</label>
+            <input class="form-control font-monospace text-uppercase" name="renew_bank_account_holder" value="<?= htmlspecialchars($renewBankCfg['bank_account_holder'] ?? '') ?>" placeholder="VD: NGUYEN VAN A">
+          </div>
+          <div class="text-muted mb-2" style="font-size:11.5px">Chỉ hiển thị trong modal "Gia hạn gói" cho khách hàng. Không dùng để in hóa đơn.</div>
+          <button class="btn btn-primary w-100"><i class="bi bi-save me-1"></i>Lưu tài khoản gia hạn</button>
+          <?php if (!empty($renewBankCfg['updated_at'])): ?>
+          <div class="text-muted mt-2" style="font-size:11.5px">Cập nhật: <?= date('H:i d/m/Y', strtotime($renewBankCfg['updated_at'])) ?><?= !empty($renewBankCfg['updated_by']) ? ' bởi ' . htmlspecialchars($renewBankCfg['updated_by']) : '' ?></div>
+          <?php endif; ?>
+        </form>
+      </div>
+    </div>
+
     <div class="card mb-3">
       <div class="card-header"><i class="bi bi-plus-circle me-2 text-success"></i>Thêm Thanh Toán</div>
       <div class="card-body">
@@ -266,7 +341,6 @@ include BASE_PATH . '/views/layouts/header.php';
               <label class="form-label">Ngày ghi nhận thanh toán</label>
               <input type="hidden" name="paid_at" id="licensePaidAtIso" value="<?= date('Y-m-d') ?>">
               <input type="text" class="form-control" data-vn-date-target="licensePaidAtIso" value="<?= date('Y-m-d') ?>">
-
             </div>
             <div class="col-6">
               <label class="form-label">Hình thức</label>
@@ -307,6 +381,18 @@ include BASE_PATH . '/views/layouts/header.php';
         </form>
       </div>
     </div>
+    <?php else: ?>
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-arrow-repeat me-2 text-primary"></i>Hướng Dẫn Gia Hạn</div>
+      <div class="card-body">
+        <ol class="mb-0 ps-3" style="font-size:13px;line-height:1.8">
+          <li>Bấm <strong>Gia hạn gói</strong> để xem thông tin tài khoản ngân hàng và mã QR.</li>
+          <li>Thực hiện chuyển khoản đúng số tiền và nội dung.</li>
+          <li>Sau khi thanh toán, liên hệ người cung cấp để được xác nhận gia hạn.</li>
+        </ol>
+      </div>
+    </div>
+    <?php endif; ?>
   </div>
 </div>
 
@@ -331,6 +417,144 @@ const FEATURE_PROFILES = <?= json_encode(array_map(fn($profile)=>$profile['featu
 function selectFeatureProfile(input){document.querySelectorAll('.feature-profile-option').forEach(label=>label.classList.toggle('is-selected',label.contains(input)&&input.checked));const enabled=FEATURE_PROFILES[input.value]||[];document.querySelectorAll('.feature-module').forEach(module=>module.classList.toggle('is-enabled',enabled.includes(module.dataset.feature)))}
 selectFeatureProfile(document.querySelector('[name="feature_profile"]:checked'));
 updateLicensePackagePreview();
+</script>
+
+<div class="modal fade" id="renewModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-arrow-repeat me-2 text-primary"></i>Gia hạn gói sử dụng</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <?php
+          $renewBank = function_exists('licensePaymentBankGetPublic') ? licensePaymentBankGetPublic() : [];
+          $bankName = trim($renewBank['bank_name'] ?? '');
+          $bankBin = trim($renewBank['bank_bin'] ?? '');
+          $bankAcc = trim($renewBank['bank_account_no'] ?? '');
+          $bankHolder = trim($renewBank['bank_account_holder'] ?? '');
+          if ($bankHolder === '') $bankHolder = $customer['name'] ?? storeName();
+          $renewPackages = $pricing['packages'] ?? [
+            ['months' => 6, 'pay_months' => 5, 'free_months' => 1],
+            ['months' => 12, 'pay_months' => 10, 'free_months' => 2],
+            ['months' => 24, 'pay_months' => 20, 'free_months' => 4],
+          ];
+          $renewFirst = $renewPackages[0] ?? ['months' => 12];
+          $renewFirstCalc = function_exists('licensePaymentAmount') ? licensePaymentAmount($license, (int)$renewFirst['months']) : ['amount' => $monthlyPrice * (int)($renewFirst['pay_months'] ?? $renewFirst['months']), 'pay_months' => $renewFirst['pay_months'] ?? $renewFirst['months'], 'free_months' => $renewFirst['free_months'] ?? 0];
+          $renewAmountDefault = (float)$renewFirstCalc['amount'];
+          $renewAddInfoDefault = ($customer['name'] ?? storeName()) . ' - GIA HAN ' . (int)$renewFirst['months'] . ' THANG';
+        ?>
+        <?php if ($bankName === '' || $bankAcc === ''): ?>
+          <div class="alert alert-warning mb-0">
+            <i class="bi bi-exclamation-triangle me-2"></i>Chưa cấu hình tài khoản ngân hàng nhận thanh toán gia hạn. Vui lòng liên hệ người quản trị hệ thống.
+          </div>
+        <?php else: ?>
+        <div class="row g-3">
+          <div class="col-lg-6">
+            <div class="p-3 rounded-3 h-100" style="background:var(--bg-main);border:1px solid var(--border)">
+              <div class="fw-700 mb-2">Thông tin chuyển khoản gia hạn</div>
+              <div class="mb-2">
+                <label class="form-label mb-1">Chọn gói gia hạn</label>
+                <select class="form-select" id="renewPackageSelect" onchange="updateRenewModalPreview()">
+                  <?php foreach ($renewPackages as $pkg): $calcPkg = function_exists('licensePaymentAmount') ? licensePaymentAmount($license, (int)$pkg['months']) : ['amount' => $monthlyPrice * (int)($pkg['pay_months'] ?? $pkg['months']), 'pay_months' => $pkg['pay_months'] ?? $pkg['months'], 'free_months' => $pkg['free_months'] ?? 0]; ?>
+                  <option value="<?= (int)$pkg['months'] ?>" data-amount="<?= (float)$calcPkg['amount'] ?>" data-pay="<?= (int)$calcPkg['pay_months'] ?>" data-free="<?= (int)$calcPkg['free_months'] ?>">
+                    Gói <?= (int)$pkg['months'] ?> tháng<?php if ((int)$calcPkg['free_months'] > 0): ?> (trả <?= (int)$calcPkg['pay_months'] ?> tháng - tặng <?= (int)$calcPkg['free_months'] ?> tháng)<?php endif; ?>
+                  </option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+              <div class="mb-2">
+                <div class="text-muted" style="font-size:12px">Ngân hàng</div>
+                <div class="fw-600"><?= htmlspecialchars($bankName) ?></div>
+              </div>
+              <div class="mb-2">
+                <div class="text-muted" style="font-size:12px">Số tài khoản</div>
+                <div class="fw-700 font-monospace" style="font-size:16px"><?= htmlspecialchars($bankAcc) ?></div>
+              </div>
+              <div class="mb-2">
+                <div class="text-muted" style="font-size:12px">Chủ tài khoản</div>
+                <div class="fw-600"><?= htmlspecialchars($bankHolder) ?></div>
+              </div>
+              <div class="mb-3">
+                <div class="text-muted" style="font-size:12px">Số tiền chuyển khoản</div>
+                <div class="fw-800 text-success" style="font-size:20px" id="renewAmountDisplay"><?= licenseFormatMoney($renewAmountDefault) ?></div>
+                <div class="text-muted" style="font-size:12px" id="renewDetailDisplay">Trả <?= (int)$renewFirstCalc['pay_months'] ?> tháng<?php if ((int)$renewFirstCalc['free_months'] > 0): ?>, tặng <?= (int)$renewFirstCalc['free_months'] ?> tháng<?php endif; ?></div>
+              </div>
+              <div class="alert alert-info mb-0" style="font-size:12.5px">
+                <i class="bi bi-info-circle me-1"></i>Nội dung chuyển khoản: <strong id="renewAddInfoDisplay"><?= htmlspecialchars($renewAddInfoDefault) ?></strong>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-6">
+            <div class="p-3 rounded-3 h-100 d-flex flex-column align-items-center justify-content-center" style="background:var(--bg-main);border:1px solid var(--border)">
+              <?php if ($bankBin): ?>
+                <img id="renewQrImg" src="https://img.vietqr.io/image/<?= htmlspecialchars($bankBin) ?>-<?= htmlspecialchars($bankAcc) ?>-compact2.png?amount=<?= (int)round($renewAmountDefault) ?>&addInfo=<?= urlencode($renewAddInfoDefault) ?>&accountName=<?= urlencode($bankHolder) ?>" alt="VietQR" style="width:240px;max-width:100%;border-radius:10px;background:#fff;border:1px solid var(--border)">
+                <div class="text-muted mt-2" style="font-size:12px">Quét mã bằng ứng dụng ngân hàng</div>
+              <?php else: ?>
+                <div class="text-center text-muted">
+                  <i class="bi bi-qr-code" style="font-size:48px"></i>
+                  <div class="mt-2" style="font-size:12.5px">Chuyển khoản thủ công theo thông tin bên trái</div>
+                </div>
+              <?php endif; ?>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3 text-muted" style="font-size:12.5px">
+          <?= $isSuperAdmin ? 'Sau khi khách chuyển khoản, vào mục Thêm Thanh Toán để ghi nhận gia hạn.' : 'Sau khi chuyển khoản, vui lòng thông báo để được xác nhận gia hạn.' ?>
+        </div>
+        <?php endif; ?>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function renewMoney(n) {
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(n) || 0);
+}
+function updateRenewModalPreview() {
+  const sel = document.getElementById('renewPackageSelect');
+  if (!sel) return;
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt) return;
+  const months = sel.value || '0';
+  const amount = Number(opt.getAttribute('data-amount') || 0);
+  const pay = opt.getAttribute('data-pay') || months;
+  const free = opt.getAttribute('data-free') || '0';
+  const customerName = <?= json_encode($customer['name'] ?? storeName()) ?>;
+  const bankBin = <?= json_encode($bankBin) ?>;
+  const bankAcc = <?= json_encode($bankAcc) ?>;
+  const bankHolder = <?= json_encode($bankHolder) ?>;
+  const amountEl = document.getElementById('renewAmountDisplay');
+  if (amountEl) amountEl.textContent = renewMoney(amount);
+  const detailEl = document.getElementById('renewDetailDisplay');
+  if (detailEl) {
+    let detail = 'Trả ' + pay + ' tháng';
+    if (Number(free) > 0) detail += ', tặng ' + free + ' tháng';
+    detailEl.textContent = detail;
+  }
+  const addInfo = customerName + ' - GIA HAN ' + months + ' THANG';
+  const addInfoEl = document.getElementById('renewAddInfoDisplay');
+  if (addInfoEl) addInfoEl.textContent = addInfo;
+  const qrImg = document.getElementById('renewQrImg');
+  if (qrImg && bankBin && bankAcc) {
+    const url = 'https://img.vietqr.io/image/' + encodeURIComponent(bankBin) + '-' + encodeURIComponent(bankAcc) + '-compact2.png?amount=' + Math.round(amount) + '&addInfo=' + encodeURIComponent(addInfo) + '&accountName=' + encodeURIComponent(bankHolder) + '&t=' + Date.now();
+    qrImg.src = url;
+  }
+}
+document.addEventListener('change', function (e) {
+  if (e.target && e.target.id === 'renewPackageSelect') {
+    updateRenewModalPreview();
+  }
+});
+document.addEventListener('shown.bs.modal', function (e) {
+  if (e.target && e.target.id === 'renewModal') {
+    updateRenewModalPreview();
+  }
+});
 </script>
 
 <?php include BASE_PATH . '/views/layouts/footer.php'; ?>

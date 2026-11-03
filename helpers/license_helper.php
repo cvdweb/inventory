@@ -121,6 +121,16 @@ function licenseCalculateEndDate(array $license): string
     return ($renewalDate ?: new DateTimeImmutable($start))->modify('-1 day')->format('Y-m-d');
 }
 
+function licenseActivationDate(array $license): string
+{
+    $payments = $license['payments'] ?? [];
+    $lastPayment = !empty($payments) ? end($payments) : null;
+    return $lastPayment['paid_at']
+        ?? $license['customer']['activated_at']
+        ?? $license['customer']['started_at']
+        ?? date('Y-m-d');
+}
+
 function licenseStatus(array $license = null): array
 {
     $license = $license ?? licenseGet();

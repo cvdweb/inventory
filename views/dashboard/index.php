@@ -54,8 +54,8 @@ $dashboardFeatureProfile = featureProfileInfo();
         <div class="fw-800"><?= htmlspecialchars($dashboardFeatureProfile['label']) ?> <span class="text-muted fw-600">· <?= htmlspecialchars($licensePackageLabel) ?></span></div>
       </div>
       <div class="col-md-3">
-        <div class="text-muted" style="font-size:11px;font-weight:800;text-transform:uppercase">Ngày bắt đầu tính phí</div>
-        <div class="fw-800"><?= date('d/m/Y', strtotime($license['customer']['started_at'] ?? date('Y-m-d'))) ?></div>
+        <div class="text-muted" style="font-size:11px;font-weight:800;text-transform:uppercase">Ngày kích hoạt</div>
+        <div class="fw-800"><?= date('d/m/Y', strtotime(licenseActivationDate($license))) ?></div>
       </div>
       <div class="col-md-3">
         <div class="text-muted" style="font-size:11px;font-weight:800;text-transform:uppercase">Ngày hết hạn</div>

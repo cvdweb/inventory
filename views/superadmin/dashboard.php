@@ -91,8 +91,8 @@ include BASE_PATH . '/views/layouts/header.php';
             <div class="fw-800"><?= htmlspecialchars($licensePackageLabel) ?></div>
           </div>
           <div class="col-md-2">
-            <div class="text-muted" style="font-size:12px">Bắt đầu tính phí</div>
-            <div class="fw-800"><?= date('d/m/Y', strtotime($license['customer']['started_at'] ?? date('Y-m-d'))) ?></div>
+            <div class="text-muted" style="font-size:12px">Ngày kích hoạt</div>
+            <div class="fw-800"><?= date('d/m/Y', strtotime(licenseActivationDate($license))) ?></div>
           </div>
           <div class="col-md-2">
             <div class="text-muted" style="font-size:12px">Hết hạn</div>
